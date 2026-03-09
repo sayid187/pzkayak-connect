@@ -1,1242 +1,345 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PzKayak Connect</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        primary: '#0066cc',
-                        secondary: '#00a878',
-                        accent: '#ff6b35',
-                        dark: '#2b3e50',
-                        light: '#f8f9fa',
-                        danger: '#dc3545',
-                        warning: '#ffc107',
-                        success: '#28a745',
-                        info: '#17a2b8'
-                    },
-                    fontFamily: {
-                        sans: ['Inter', 'system-ui', 'sans-serif'],
-                    },
-                    height: {
-                        'screen-90': '90vh',
-                    }
-                }
-            }
-        }
-    </script>
-    
-    <style type="text/tailwindcss">
-        @layer utilities {
-            .text-shadow {
-                text-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            }
-            .text-shadow-lg {
-                text-shadow: 0 4px 8px rgba(0,0,0,0.2);
-            }
-            .backdrop-blur {
-                backdrop-filter: blur(8px);
-            }
-            .scrollbar-hide::-webkit-scrollbar {
-                display: none;
-            }
-            .scrollbar-hide {
-                -ms-overflow-style: none;
-                scrollbar-width: none;
-            }
-        }
-        
-        /* Estilos personalizados */
-        body {
-            @apply bg-gray-100 font-sans text-dark;
-        }
-        
-        .page {
-            @apply hidden;
-        }
-        
-        .page.active {
-            @apply block;
-        }
-        
-        .nav-item {
-            @apply flex flex-col items-center justify-center p-2 text-gray-600 transition-colors duration-200;
-        }
-        
-        .nav-item.active {
-            @apply text-primary;
-        }
-        
-        .nav-item i {
-            @apply text-xl mb-1;
-        }
-        
-        .nav-item span {
-            @apply text-xs;
-        }
-        
-        .btn {
-            @apply px-4 py-2 rounded-lg font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-opacity-50;
-        }
-        
-        .btn-primary {
-            @apply bg-primary text-white hover:bg-blue-700 focus:ring-blue-500;
-        }
-        
-        .btn-secondary {
-            @apply bg-secondary text-white hover:bg-green-700 focus:ring-green-500;
-        }
-        
-        .btn-accent {
-            @apply bg-accent text-white hover:bg-orange-600 focus:ring-orange-500;
-        }
-        
-        .btn-danger {
-            @apply bg-danger text-white hover:bg-red-700 focus:ring-red-500;
-        }
-        
-        .card {
-            @apply bg-white rounded-xl shadow-md overflow-hidden;
-        }
-        
-        .input-field {
-            @apply w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent;
-        }
-        
-        .tab {
-            @apply px-4 py-2 font-medium text-gray-600 border-b-2 border-transparent;
-        }
-        
-        .tab.active {
-            @apply text-primary border-primary;
-        }
-        
-        /* Estilos de Mapas */
-        #map, #trip-map, #catch-map, #community-map {
-            @apply w-full h-full rounded-xl overflow-hidden;
-        }
-        
-        /* Animación de carga */
-        .skeleton {
-            @apply animate-pulse bg-gray-200 rounded;
-        }
-    </style>
-</head>
-<body>
-    <div class="app-container max-w-md mx-auto bg-white min-h-screen relative">
-        <header class="bg-white shadow-sm sticky top-0 z-10">
-            <div class="container mx-auto px-4 py-3 flex items-center justify-between">
-                <div class="flex items-center">
-                    <img src="pzlog.png" alt="PzKayak Connect Logo" class="h-8 w-auto">
-                    <h1 class="text-xl font-bold ml-2 text-primary hidden md:block" data-i18n="common.appName">PzKayak Connect</h1>
-                </div>                
-                <div class="flex items-center space-x-4">
-                    <button id="notification-btn" class="relative p-2 text-gray-600 hover:text-primary">
-                        <i class="fa fa-bell-o text-xl"></i>
-                        <span class="absolute top-1 right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">3</span>
-                    </button>
-         <button id="settings-btn" onclick="document.querySelector('.nav-item[data-page=\'profile-page\']').click()" class="p-2 text-gray-600 hover:text-primary transition-colors">
-    <i class="fa fa-cog text-xl"></i>
-</button>
-                </div>
-            </div>
-        </header>
-        
-        <main class="container mx-auto px-4 py-2 pb-20">
-            <section id="auth-page" class="page active">
-                <div class="flex flex-col items-center justify-center min-h-[70vh]">
-                    <div class="w-full max-w-sm">
-                    <div class="text-center mb-8">
-    <img src="pzlog.png" 
-         alt="Logo Oficial PzKayak" 
-         class="h-28 w-auto mx-auto mb-4 rounded-full shadow-md">
-    
-    <h2 id="auth-title" class="text-3xl font-bold text-primary mb-2">Iniciar Sesión</h2>
-    <p id="auth-subtitle" class="text-gray-600">Bienvenido de nuevo a PzKayak Connect</p>
-</div>
+/**
+ * Módulo de Registro de Capturas
+ */
 
-                        <form id="login-form" class="space-y-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Correo Electrónico</label>
-                                <input type="email" id="login-email" class="input-field" placeholder="ejemplo@correo.com" required>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Contraseña</label>
-                                <input type="password" id="login-password" class="input-field" placeholder="••••••••" required>
-                            </div>
-                            <button type="submit" class="btn btn-primary w-full py-3">Entrar</button>
-                        </form>
+const catchLog = {
+    catches: [],
+    form: null,
+    currentLat: null,
+    currentLng: null,
 
-                        <form id="register-form" class="space-y-4 hidden">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Nombre Completo</label>
-                                <input type="text" id="reg-nombre" class="input-field" placeholder="Tu nombre" required>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Correo Electrónico</label>
-                                <input type="email" id="reg-email" class="input-field" placeholder="ejemplo@correo.com" required>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Contraseña</label>
-                                <input type="password" id="reg-password" class="input-field" placeholder="Mínimo 8 caracteres" required>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Contacto de Emergencia</label>
-                                <input type="text" id="reg-emergencia" class="input-field" placeholder="+56 9 XXXX XXXX">
-                            </div>
-                            <button type="submit" class="btn btn-primary w-full py-3">Crear Cuenta</button>
-                        </form>
+    init() {
+        this.loadCatches();
+        this.setupMap();
+        this.setupForm();
+        this.setupEventListeners();
+        this.updateCatchList();
+    },
 
-                        <div class="mt-6 text-center">
-                            <button id="toggle-auth" type="button" class="text-primary font-medium hover:underline">
-                                ¿No tienes cuenta? Regístrate aquí
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </section>
+    // ── MAPA ──────────────────────────────────────────────────────────────────
 
-            <section id="dashboard-page" class="page">
-                <div class="card mb-4 p-4">
-                    <div class="flex items-center justify-between mb-2">
-                        <div class="flex items-center">
-                            <i class="fa fa-map-marker text-accent text-xl mr-2"></i>
-                            <h2 class="text-lg font-semibold">Ubicación Actual</h2>
-                        </div>
-                        <button class="text-primary text-sm flex items-center" data-i18n="common.refresh">
-                            <i class="fa fa-refresh mr-1"></i> Actualizar
-                        </button>
-                    </div>                    
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center">
-                            <i class="fa fa-sun-o text-yellow-500 text-4xl mr-3"></i>
-                            <div>
-                                <p class="text-2xl font-bold">23°C</p>
-                                <p class="text-sm text-gray-600">Soleado</p>                            
-                            </div>
-                        </div>
-                        <div class="grid grid-cols-2 gap-4 text-center">
-                            <div>
-                                <p class="text-sm text-gray-600" data-i18n="dashboard.windSpeed">Velocidad del Viento</p>
-                                <p class="font-semibold">3.2 m/s</p>                            
-                            </div>
-                            <div>
-                                <p class="text-sm text-gray-600" data-i18n="dashboard.humidity">Humedad</p>
-                                <p class="font-semibold">65%</p>                            
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="card mb-4 p-4">
-                    <div class="flex items-center justify-between mb-4">
-                        <h2 class="text-lg font-semibold" data-i18n="dashboard.tideChart">Gráfico de Mareas</h2>
-                        <div class="flex space-x-2">
-                            <button class="tab active" data-tide="today" data-i18n="dashboard.today">Hoy</button>
-                            <button class="tab" data-tide="tomorrow" data-i18n="dashboard.tomorrow">Mañana</button>
-                        </div>
-                    </div>                    
-                    <div class="h-48">
-                        <canvas id="tide-chart"></canvas>
-                    </div>
-                </div>
-                
-                <div class="card mb-4 p-4">
-                    <h2 class="text-lg font-semibold mb-3" data-i18n="dashboard.recentActivity">Actividad Reciente</h2>                    
-                    <div class="space-y-3">
-                        <div class="flex items-center p-2 bg-gray-50 rounded-lg">
-                            <div class="bg-blue-100 p-2 rounded-full mr-3">
-                                <i class="fa fa-route text-primary"></i>
-                            </div>
-                            <div class="flex-1">
-                                <p class="font-medium">Ruta de ayer</p>
-                                <p class="text-sm text-gray-600">3.5 km | 2 h 15 min</p>
-                            </div>
-                            <span class="text-sm text-gray-500">Ayer</span>
-                        </div>
-                        <div class="flex items-center p-2 bg-gray-50 rounded-lg">
-                            <div class="bg-green-100 p-2 rounded-full mr-3">
-                                <i class="fa fa-fish text-secondary"></i>
-                            </div>
-                            <div class="flex-1">
-                                <p class="font-medium">Registro de captura</p>
-                                <p class="text-sm text-gray-600">5 piezas | Máx: 45cm Lubina</p>
-                            </div>
-                            <span class="text-sm text-gray-500">Ayer</span>
-                        </div>
-                        <div class="flex items-center p-2 bg-gray-50 rounded-lg">
-                            <div class="bg-orange-100 p-2 rounded-full mr-3">
-                                <i class="fa fa-users text-accent"></i>
-                            </div>
-                            <div class="flex-1">
-                                <p class="font-medium">Actividad comunitaria</p>
-                                <p class="text-sm text-gray-600">Participaste en "Pesca de Fin de Semana"</p>
-                            </div>
-                            <span class="text-sm text-gray-500">Hace 3 días</span>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="grid grid-cols-4 gap-2 mb-4">
-    <button onclick="document.querySelector('.nav-item[data-page=\'trip-page\']').click()" class="flex flex-col items-center justify-center p-3 bg-blue-50 rounded-xl hover:bg-blue-100 transition-colors">
-        <i class="fa fa-play-circle text-primary text-2xl mb-1"></i>
-        <span class="text-xs text-center">Iniciar<br>Viaje</span>
-    </button>
-    <button onclick="document.querySelector('.nav-item[data-page=\'catch-page\']').click()" class="flex flex-col items-center justify-center p-3 bg-green-50 rounded-xl hover:bg-green-100 transition-colors">
-        <i class="fa fa-plus-circle text-secondary text-2xl mb-1"></i>
-        <span class="text-xs text-center">Añadir<br>Captura</span>
-    </button>
-    <button onclick="document.querySelector('.nav-item[data-page=\'community-page\']').click()" class="flex flex-col items-center justify-center p-3 bg-orange-50 rounded-xl hover:bg-orange-100 transition-colors">
-        <i class="fa fa-users text-accent text-2xl mb-1"></i>
-        <span class="text-xs text-center">Buscar<br>Amigos</span>
-    </button>
-    <button onclick="document.querySelector('.nav-item[data-page=\'safety-page\']').click()" class="flex flex-col items-center justify-center p-3 bg-red-50 rounded-xl hover:bg-red-100 transition-colors">
-        <i class="fa fa-shield text-danger text-2xl mb-1"></i>
-        <span class="text-xs text-center">Ayuda<br>SOS</span>
-    </button>
-</div>
-            </section>
-            
-            <section id="trip-page" class="page">
-                <div class="mb-4">
-                    <div class="card mb-4">
-                        <div class="h-64">
-                            <div id="trip-map"></div>
-                        </div>
-                        <div class="p-4 bg-gray-50">
-                            <div class="flex items-center justify-between mb-2">
-                                <h2 class="text-lg font-semibold">Ruta en curso</h2>
-                                <div class="flex items-center">
-                                    <span id="connection-status" class="inline-block w-3 h-3 bg-green-500 rounded-full mr-1"></span>
-                                    <span class="text-sm text-gray-600">En línea</span>
-                                </div>
-                            </div>
-                            <div class="grid grid-cols-3 gap-4 text-center">
-                                <div>
-                                    <p class="text-sm text-gray-600">Distancia</p>
-                                    <p class="text-xl font-bold">0.0 <span class="text-sm font-normal">km</span></p>
-                                </div>
-                                <div>
-                                    <p class="text-sm text-gray-600">Tiempo</p>
-                                    <p class="text-xl font-bold">00:00 <span class="text-sm font-normal">h</span></p>
-                                </div>
-                                <div>
-                                    <p class="text-sm text-gray-600">Velocidad</p>
-                                    <p class="text-xl font-bold">0.0 <span class="text-sm font-normal">km/h</span></p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="flex space-x-2 mb-4">
-                        <button id="start-trip-btn" class="btn btn-primary flex-1">
-                            <i class="fa fa-play mr-1"></i> Iniciar
-                        </button>
-                        <button id="pause-trip-btn" class="btn btn-secondary flex-1" disabled>
-                            <i class="fa fa-pause mr-1"></i> Pausar
-                        </button>
-                        <button id="stop-trip-btn" class="btn btn-danger flex-1" disabled>
-                            <i class="fa fa-stop mr-1"></i> Finalizar
-                        </button>
-                    </div>
-                    
-                    <div class="card p-4">
-                        <h2 class="text-lg font-semibold mb-3">Historial</h2>
-                        <div class="space-y-3">
-                            <div class="flex items-center p-2 bg-gray-50 rounded-lg">
-                                <div class="bg-blue-100 p-2 rounded-full mr-3">
-                                    <i class="fa fa-calendar text-primary"></i>
-                                </div>
-                                <div class="flex-1">
-                                    <p class="font-medium">21 de Julio, 2025</p>
-                                    <p class="text-sm text-gray-600">3.5 km | 2 h 15 min</p>
-                                </div>
-                                <button class="text-primary">
-                                    <i class="fa fa-chevron-right"></i>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
+    setupMap() {
+        const container = document.getElementById('catch-map');
+        if (!container) return;
 
-            <section id="catch-page" class="page">
-                <div class="mb-4">
-                    <div class="card mb-4">
-                        <div class="h-64">
-                            <div id="catch-map"></div>
-                        </div>
-                        <div class="p-4 bg-gray-50">
-                            <div class="flex items-center justify-between mb-2">
-                                <h2 class="text-lg font-semibold">Mapa de Capturas</h2>
-                                <button class="text-primary text-sm flex items-center">
-                                    <i class="fa fa-plus-circle mr-1"></i> Añadir Marcador
-                                </button>
-                            </div>
-                            <p class="text-sm text-gray-600">Haz clic en un marcador para ver los detalles</p>
-                        </div>
-                    </div>
-                    
-                    <div class="card p-4 mb-4">
-                        <h2 class="text-lg font-semibold mb-3">Añadir Registro de Captura</h2>
-                        <form id="catch-form" class="space-y-3">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Especie</label>
-                                <select class="input-field">
-                                    <option value="">Seleccionar Especie</option>
-                                    <option value="bass">Lubina</option>
-                                    <option value="salmon">Salmón</option>
-                                    <option value="trout">Trucha</option>
-                                    <option value="tuna">Atún</option>
-                                    <option value="other">Otro</option>
-                                </select>
-                            </div>
-                            <div class="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Longitud (cm)</label>
-                                    <input type="number" class="input-field" placeholder="Ej. 45">
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Peso (kg)</label>
-                                    <input type="number" class="input-field" placeholder="Ej. 2.5">
-                                </div>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Cebo / Señuelo</label>
-                                <input type="text" class="input-field" placeholder="Tipo de cebo">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Profundidad (m)</label>
-                                <input type="number" class="input-field" placeholder="Ej. 10">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Foto</label>
-                                <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
-                                    <i class="fa fa-camera text-gray-400 text-3xl mb-2"></i>
-                                    <p class="text-sm text-gray-600">Haz clic para subir una foto</p>
-                                    <input type="file" class="hidden" accept="image/*">
-                                </div>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Notas</label>
-                                <textarea class="input-field" rows="3" placeholder="Añadir notas"></textarea>
-                            </div>
-                            <button type="submit" class="btn btn-primary w-full">
-                                <i class="fa fa-save mr-1"></i> Guardar Captura
-                            </button>
-                        </form>
-                    </div>
-                    
-                    <div class="card p-4">
-                        <div class="flex items-center justify-between mb-3">
-                            <h2 class="text-lg font-semibold">Registro de Capturas</h2>
-                            <div class="flex space-x-2">
-                                <button class="tab active" data-filter="all">Todos</button>
-                                <button class="tab" data-filter="recent">Reciente</button>
-                            </div>
-                        </div>
-                        <div class="space-y-3">
-                            <div class="flex items-center p-2 bg-gray-50 rounded-lg">
-                                <div class="w-16 h-16 bg-gray-200 rounded-lg overflow-hidden mr-3">
-                                    <img src="https://p3-doubao-search-sign.byteimg.com/labis/c403867a19a382ff22c33b684c1e6de7~tplv-be4g95zd3a-image.jpeg?lk3s=feb11e32&x-expires=1787846628&x-signature=AgVImSRWkxz5ECEHI9gRQwuuxL4%3D" alt="Foto de captura" class="w-full h-full object-cover">
-                                </div>
-                                <div class="flex-1">
-                                    <p class="font-medium">Lubina</p>
-                                    <p class="text-sm text-gray-600">45cm | 2.3kg | Hoy 14:30</p>
-                                </div>
-                                <div class="flex space-x-2">
-                                    <button class="text-gray-600 hover:text-primary"><i class="fa fa-pencil"></i></button>
-                                    <button class="text-gray-600 hover:text-danger"><i class="fa fa-trash"></i></button>
-                                </div>
-                            </div>
-                            <div class="flex items-center p-2 bg-gray-50 rounded-lg">
-                                <div class="w-16 h-16 bg-gray-200 rounded-lg overflow-hidden mr-3">
-                                    <img src="https://p26-doubao-search-sign.byteimg.com/labis/5f7437e5533bfa325827bf52c6729ec3~tplv-be4g95zd3a-image.jpeg?lk3s=feb11e32&x-expires=1787846628&x-signature=mY3xKQX7ZeZ9D8NrcHw%2FMiXYON0%3D" alt="Foto de captura" class="w-full h-full object-cover">
-                                </div>
-                                <div class="flex-1">
-                                    <p class="font-medium">Atún</p>
-                                    <p class="text-sm text-gray-600">65cm | 5.8kg | Ayer 16:45</p>
-                                </div>
-                                <div class="flex space-x-2">
-                                    <button class="text-gray-600 hover:text-primary"><i class="fa fa-pencil"></i></button>
-                                    <button class="text-gray-600 hover:text-danger"><i class="fa fa-trash"></i></button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-            
-            <section id="community-page" class="page">
-                <div class="mb-4">
-                    <div class="card mb-4">
-                        <div class="h-64">
-                            <div id="community-map"></div>
-                        </div>
-                        <div class="p-4 bg-gray-50">
-                            <div class="flex items-center justify-between mb-2">
-                                <h2 class="text-lg font-semibold">Ubicaciones de Amigos</h2>
-                                <button class="text-primary text-sm flex items-center">
-                                    <i class="fa fa-refresh mr-1"></i> Actualizar
-                                </button>
-                            </div>
-                            <p class="text-sm text-gray-600">3 amigos en línea</p>
-                        </div>
-                    </div>
-                    
-                    <div class="card p-4 mb-4">
-                        <h2 class="text-lg font-semibold mb-3">Lista de Amigos</h2>
-                        <div class="space-y-3">
-                            <div class="flex items-center p-2 bg-gray-50 rounded-lg">
-                                <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mr-3">
-                                    <span class="font-bold text-primary">C</span>
-                                </div>
-                                <div class="flex-1">
-                                    <p class="font-medium">Carlos</p>
-                                    <p class="text-sm text-gray-600">En línea · A 2.5 km</p>
-                                </div>
-                                <div class="flex space-x-2">
-                                    <button class="text-primary"><i class="fa fa-map-marker"></i></button>
-                                    <button class="text-primary"><i class="fa fa-comment"></i></button>
-                                </div>
-                            </div>
-                            <div class="flex items-center p-2 bg-gray-50 rounded-lg">
-                                <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center mr-3">
-                                    <span class="font-bold text-secondary">M</span>
-                                </div>
-                                <div class="flex-1">
-                                    <p class="font-medium">Miguel</p>
-                                    <p class="text-sm text-gray-600">En línea · A 5.8 km</p>
-                                </div>
-                                <div class="flex space-x-2">
-                                    <button class="text-primary"><i class="fa fa-map-marker"></i></button>
-                                    <button class="text-primary"><i class="fa fa-comment"></i></button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="card p-4 mb-4">
-                        <div class="flex items-center justify-between mb-3">
-                            <h2 class="text-lg font-semibold">Actividades de Grupo</h2>
-                            <button class="btn btn-primary text-sm">
-                                <i class="fa fa-plus mr-1"></i> Crear
-                            </button>
-                        </div>
-                        <div class="space-y-3">
-                            <div class="p-3 bg-gray-50 rounded-lg">
-                                <div class="flex items-center justify-between mb-2">
-                                    <h3 class="font-medium">Pesca de Fin de Semana</h3>
-                                    <span class="text-xs bg-blue-100 text-primary px-2 py-1 rounded-full">En curso</span>
-                                </div>
-                                <p class="text-sm text-gray-600 mb-2">Fecha: 26 de Julio, 2025 08:00</p>
-                                <p class="text-sm text-gray-600 mb-2">Lugar: Zona costera central</p>
-                                <div class="flex items-center justify-between">
-                                    <div class="flex -space-x-2">
-                                        <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center border-2 border-white"><span class="text-xs font-bold text-primary">C</span></div>
-                                        <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center border-2 border-white"><span class="text-xs font-bold text-secondary">M</span></div>
-                                        <div class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center border-2 border-white"><span class="text-xs font-bold text-gray-600">+2</span></div>
-                                    </div>
-                                    <button class="btn btn-secondary text-sm">Unirse</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-            
-            <section id="safety-page" class="page">
-                <div class="mb-4">
-                    <div class="card mb-4 p-6 bg-red-50">
-                        <div class="flex flex-col items-center justify-center">
-                            <button id="sos-btn" class="w-20 h-20 bg-danger rounded-full flex items-center justify-center mb-4 shadow-lg">
-                                <i class="fa fa-exclamation-triangle text-white text-4xl"></i>
-                            </button>
-                            <h2 class="text-2xl font-bold text-danger mb-2">Ayuda de Emergencia SOS</h2>
-                            <p class="text-center text-gray-700 mb-4">Presiona el botón para enviar una alerta</p>
-                            <button class="btn btn-danger">
-                                <i class="fa fa-phone mr-1"></i> Llamada de Emergencia
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <div class="card p-4 mb-4">
-                        <h2 class="text-lg font-semibold mb-3">Contactos de Emergencia</h2>
-                        <div class="space-y-3">
-                            <div class="flex items-center p-2 bg-gray-50 rounded-lg">
-                                <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mr-3">
-                                    <span class="font-bold text-primary">F</span>
-                                </div>
-                                <div class="flex-1">
-                                    <p class="font-medium">Familiar</p>
-                                    <p class="text-sm text-gray-600">+56 9 1234 5678</p>
-                                </div>
-                                <div class="flex space-x-2">
-                                    <button class="text-primary"><i class="fa fa-pencil"></i></button>
-                                    <button class="text-danger"><i class="fa fa-trash"></i></button>
-                                </div>
-                            </div>
-                            <button class="btn btn-primary w-full">
-                                <i class="fa fa-plus mr-1"></i> Añadir Contacto
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <div class="card p-4 mb-4">
-                        <h2 class="text-lg font-semibold mb-3">Equipo de Seguridad</h2>
-                        <div class="space-y-3">
-                            <div class="flex items-center">
-                                <input type="checkbox" id="life-jacket" class="w-5 h-5 text-primary rounded focus:ring-primary">
-                                <label for="life-jacket" class="ml-2 text-gray-700">Chaleco Salvavidas</label>
-                            </div>
-                            <div class="flex items-center">
-                                <input type="checkbox" id="whistle" class="w-5 h-5 text-primary rounded focus:ring-primary">
-                                <label for="whistle" class="ml-2 text-gray-700">Silbato</label>
-                            </div>
-                            <div class="flex items-center">
-                                <input type="checkbox" id="anchor" class="w-5 h-5 text-primary rounded focus:ring-primary">
-                                <label for="anchor" class="ml-2 text-gray-700">Ancla</label>
-                            </div>
-                            <div class="flex items-center">
-                                <input type="checkbox" id="paddle" class="w-5 h-5 text-primary rounded focus:ring-primary">
-                                <label for="paddle" class="ml-2 text-gray-700">Remo extra</label>
-                            </div>
-                            <div class="flex items-center">
-                                <input type="checkbox" id="first-aid" class="w-5 h-5 text-primary rounded focus:ring-primary">
-                                <label for="first-aid" class="ml-2 text-gray-700">Botiquín de Primeros Auxilios</label>
-                            </div>
-                            <div class="flex items-center">
-                                <input type="checkbox" id="water" class="w-5 h-5 text-primary rounded focus:ring-primary">
-                                <label for="water" class="ml-2 text-gray-700">Agua Potable</label>
-                            </div>
-                            <button class="btn btn-primary w-full">
-                                <i class="fa fa-check-circle mr-1"></i> Completar Verificación
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </section>
-            
-            <section id="regulations-page" class="page">
-                <div class="mb-4">
-                    <div class="card p-4 mb-4">
-                        <div class="flex items-center justify-between mb-3">
-                            <h2 class="text-lg font-semibold">Región</h2>
-                            <div class="relative">
-                                <select class="input-field pr-8 appearance-none">
-                                    <option value="zona-centro">Zona Centro (Chile)</option>
-                                    <option value="zona-norte">Zona Norte</option>
-                                    <option value="zona-sur">Zona Sur</option>
-                                </select>
-                                <i class="fa fa-chevron-down absolute right-3 top-3 text-gray-500 pointer-events-none"></i>
-                            </div>
-                        </div>
-                        <div class="relative">
-                            <input type="text" class="input-field pl-10" placeholder="Buscar reglamentos...">
-                            <i class="fa fa-search absolute left-3 top-3 text-gray-500"></i>
-                        </div>
-                    </div>
-                    
-                    <div class="card p-4 mb-4">
-                        <h2 class="text-lg font-semibold mb-3">Licencia de Pesca</h2>
-                        <div class="bg-blue-50 p-3 rounded-lg mb-3">
-                            <div class="flex items-center mb-2">
-                                <i class="fa fa-info-circle text-primary mr-2"></i>
-                                <h3 class="font-medium">Requisitos</h3>
-                            </div>
-                            <p class="text-sm text-gray-700 mb-2">Se requiere licencia de pesca recreativa vigente emitida por Sernapesca.</p>
-                        </div>
-                        <div class="bg-green-50 p-3 rounded-lg">
-                            <div class="flex items-center mb-2">
-                                <i class="fa fa-check-circle text-secondary mr-2"></i>
-                                <h3 class="font-medium">Mi Licencia</h3>
-                            </div>
-                            <div class="flex items-center justify-between">
-                                <div>
-                                    <p class="font-medium">Licencia #2025-12345</p>
-                                    <p class="text-sm text-gray-600">Válido hasta: 31 de Julio, 2026</p>
-                                </div>
-                                <button class="text-primary"><i class="fa fa-eye"></i></button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-            
-            <section id="profile-page" class="page">
-                <div class="mb-4">
-                    <div class="card p-6 flex flex-col items-center">
-                        <div class="w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center mb-4">
-                            <i class="fa fa-user text-4xl text-primary"></i>
-                        </div>
-                        <h2 class="text-xl font-bold mb-1">Usuario PzKayak</h2>
-                        <p class="text-gray-600 mb-4">Entusiasta de Pesca en Kayak</p>
-                        <button class="btn btn-primary text-sm">
-                            <i class="fa fa-pencil mr-1"></i> Editar Perfil
-                        </button>
-                    </div>
-                    
-                    <div class="card p-4 mb-4 mt-4">
-                        <h2 class="text-lg font-semibold mb-3">Estadísticas</h2>
-                        <div class="grid grid-cols-3 gap-4 text-center">
-                            <div>
-                                <p class="text-2xl font-bold text-primary">42</p>
-                                <p class="text-sm text-gray-600">Viajes</p>
-                            </div>
-                            <div>
-                                <p class="text-2xl font-bold text-secondary">128</p>
-                                <p class="text-sm text-gray-600">Capturas</p>
-                            </div>
-                            <div>
-                                <p class="text-2xl font-bold text-accent">156</p>
-                                <p class="text-sm text-gray-600">Kilómetros</p>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="card p-4 mb-4 mt-4">
-                        <h2 class="text-lg font-semibold mb-3">Configuración de la App</h2>
-                        <div class="space-y-3">
-                            <div class="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
-                                <div class="flex items-center">
-                                    <div class="bg-blue-100 p-2 rounded-full mr-3"><i class="fa fa-bell-o text-primary"></i></div>
-                                    <p class="font-medium">Notificaciones</p>
-                                </div>
-                                <button class="text-gray-600"><i class="fa fa-chevron-right"></i></button>
-                            </div>
-                            <div class="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
-                                <div class="flex items-center">
-                                    <div class="bg-green-100 p-2 rounded-full mr-3"><i class="fa fa-download text-secondary"></i></div>
-                                    <p class="font-medium">Datos Offline</p>
-                                </div>
-                                <div class="flex items-center">
-                                    <span class="text-sm text-gray-600 mr-2">Sincronización Automática</span>
-                                    <label class="relative inline-flex items-center cursor-pointer">
-                                        <input type="checkbox" class="sr-only peer" checked>
-                                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-                                    </label>
-                                </div>
-                            </div>
-                            <div class="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
-                                <div class="flex items-center">
-                                    <div class="bg-orange-100 p-2 rounded-full mr-3"><i class="fa fa-map-marker text-accent"></i></div>
-                                    <p class="font-medium">Permisos de Ubicación</p>
-                                </div>
-                                <button class="text-gray-600"><i class="fa fa-chevron-right"></i></button>
-                            </div>
-                            <div class="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
-                                <div class="flex items-center">
-                                    <div class="bg-purple-100 p-2 rounded-full mr-3"><i class="fa fa-lock text-purple-600"></i></div>
-                                    <p class="font-medium">Seguridad de Cuenta</p>
-                                </div>
-                                <button class="text-gray-600"><i class="fa fa-chevron-right"></i></button>
-                            </div>
-                            <div class="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
-                                <div class="flex items-center">
-                                    <div class="bg-gray-100 p-2 rounded-full mr-3"><i class="fa fa-language text-gray-600"></i></div>
-                                    <p class="font-medium">Idioma</p>
-                                </div>
-                                <div class="flex items-center">
-                                    <span class="text-sm text-gray-600 mr-2">Español</span>
-                                    <button class="text-gray-600"><i class="fa fa-chevron-right"></i></button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="card p-4">
-                        <div class="flex items-center justify-between mb-3">
-                            <h2 class="text-lg font-semibold">Acerca de</h2>
-                            <p class="text-sm text-gray-600">Versión 1.0.0</p>
-                        </div>
-                        <div class="space-y-3">
-                            <div class="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
-                                <p class="font-medium">Política de Privacidad</p>
-                                <button class="text-gray-600"><i class="fa fa-chevron-right"></i></button>
-                            </div>
-                            <div class="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
-                                <p class="font-medium">Términos de Servicio</p>
-                                <button class="text-gray-600"><i class="fa fa-chevron-right"></i></button>
-                            </div>
-                            <div class="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
-                                <p class="font-medium">Centro de Ayuda</p>
-                                <button class="text-gray-600"><i class="fa fa-chevron-right"></i></button>
-                            </div>
-                            <div class="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
-                                <p class="font-medium">Contáctanos</p>
-                                <button class="text-gray-600"><i class="fa fa-chevron-right"></i></button>
-                            </div>
-                        </div>
-                        <button class="btn btn-danger w-full mt-4">
-                            <i class="fa fa-sign-out mr-1"></i> Cerrar Sesión
-                        </button>
-                    </div>
-                </div>
-            </section>
-        </main>
-        
-        <nav class="fixed bottom-0 left-0 right-0 bg-white shadow-lg border-t border-gray-200 z-20">
-            <div class="container mx-auto max-w-md">
-                <div class="flex justify-around">
-                    <button class="nav-item active" data-page="dashboard-page"><i class="fa fa-home"></i><span>Inicio</span></button>
-                    <button class="nav-item" data-page="trip-page"><i class="fa fa-route"></i><span>Viaje</span></button>
-                    <button class="nav-item" data-page="catch-page"><i class="fa fa-fish"></i><span>Captura</span></button>
-                    <button class="nav-item" data-page="community-page"><i class="fa fa-users"></i><span>Comunidad</span></button>
-                    <button class="nav-item" data-page="safety-page"><i class="fa fa-shield"></i><span>Seguridad</span></button>
-                    <button class="nav-item" data-page="regulations-page"><i class="fa fa-gavel"></i><span>Leyes</span></button>
-                    <button class="nav-item" data-page="profile-page"><i class="fa fa-user"></i><span>Perfil</span></button>
-                </div>
-            </div>
-        </nav>
-        
-        <div id="notification-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-start justify-center pt-20">
-            <div class="bg-white rounded-xl w-full max-w-md mx-4 max-h-[80vh] overflow-y-auto">
-                <div class="p-4 border-b border-gray-200 flex items-center justify-between">
-                    <h2 class="text-lg font-semibold">Notificaciones</h2>
-                    <button id="close-notification-modal" class="text-gray-600 hover:text-danger transition-colors">
-                        <i class="fa fa-times text-xl"></i>
-                    </button>
-                </div>
-                <div class="p-4 space-y-4">
-                    <div class="flex items-start p-3 bg-blue-50 rounded-lg">
-                        <div class="bg-blue-100 p-2 rounded-full mr-3 mt-1">
-                            <i class="fa fa-bell text-primary"></i>
-                        </div>
-                        <div class="flex-1">
-                            <p class="font-medium">Alerta de Clima</p>
-                            <p class="text-sm text-gray-600 mb-1">Vientos fuertes mañana, no se recomienda salir a pescar.</p>
-                            <p class="text-xs text-gray-500">Hace 10 min</p>
-                        </div>
-                    </div>
-                    <div class="flex items-start p-3 bg-green-50 rounded-lg">
-                        <div class="bg-green-100 p-2 rounded-full mr-3 mt-1">
-                            <i class="fa fa-users text-secondary"></i>
-                        </div>
-                        <div class="flex-1">
-                            <p class="font-medium">Invitación a Actividad</p>
-                            <p class="text-sm text-gray-600 mb-1">Te han invitado a "Pesca de Fin de Semana".</p>
-                            <p class="text-xs text-gray-500">Hace 2 horas</p>
-                        </div>
-                    </div>
-                    <div class="flex items-start p-3 bg-gray-50 rounded-lg">
-                        <div class="bg-gray-100 p-2 rounded-full mr-3 mt-1">
-                            <i class="fa fa-info-circle text-gray-600"></i>
-                        </div>
-                        <div class="flex-1">
-                            <p class="font-medium">Notificación del Sistema</p>
-                            <p class="text-sm text-gray-600 mb-1">¡Bienvenido a PzKayak Connect!</p>
-                            <p class="text-xs text-gray-500">Ayer</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <div id="sos-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
-            <div class="bg-white rounded-xl w-full max-w-md mx-4 p-6">
-                <div class="flex flex-col items-center mb-4">
-                    <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
-                        <i class="fa fa-exclamation-triangle text-danger text-3xl"></i>
-                    </div>
-                    <h2 class="text-xl font-bold text-danger mb-2 text-center">¿Confirmar envío de ayuda de emergencia?</h2>
-                    <p class="text-center text-gray-600">Esto enviará tu ubicación actual a tus contactos de emergencia.</p>
-                </div>
-                <div class="bg-gray-50 p-3 rounded-lg mb-4">
-                    <p class="text-sm text-gray-600 mb-1">Ubicación Actual</p>
-                    <p class="font-medium text-center">Lat: -33.4569, Lon: -70.6482</p>
-                </div>
-                <div class="flex space-x-3">
-                    <button id="cancel-sos" class="btn bg-gray-200 text-gray-700 hover:bg-gray-300 flex-1">
-                        Cancelar
-                    </button>
-                    <button id="confirm-sos" class="btn btn-danger flex-1">
-                        Confirmar
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <script src="js/weatherModule.js"></script>
-    <script src="js/tripTracking.js"></script>
-    <script src="js/catchLog.js"></script>
-    <script src="js/communityModule.js"></script>
-    <script src="js/safetyModule.js"></script>
-    <script src="js/app.js"></script>
-    <script>
-        // Elementos del DOM
-        const pages = document.querySelectorAll('.page');
-        const navItems = document.querySelectorAll('.nav-item');
-        const notificationBtn = document.getElementById('notification-btn');
-        const notificationModal = document.getElementById('notification-modal');
-        const closeNotificationModal = document.getElementById('close-notification-modal');
-        const sosBtn = document.getElementById('sos-btn');
-        const sosModal = document.getElementById('sos-modal');
-        const cancelSos = document.getElementById('cancel-sos');
-        const confirmSos = document.getElementById('confirm-sos');
-        const startTripBtn = document.getElementById('start-trip-btn');
-        const pauseTripBtn = document.getElementById('pause-trip-btn');
-        const stopTripBtn = document.getElementById('stop-trip-btn');
-        const connectionStatus = document.getElementById('connection-status');
-        
-        // Navegación principal
-        navItems.forEach(item => {
-            item.addEventListener('click', () => {
-                const targetPage = item.dataset.page;
-                
-                navItems.forEach(navItem => navItem.classList.remove('active'));
-                item.classList.add('active');
-                
-                pages.forEach(page => {
-                    page.classList.remove('active');
-                    if (page.id === targetPage) {
-                        page.classList.add('active');
-                    }
-                });
-            });
+        const cargarMapa = (lat, lng) => {
+            this.currentLat = lat;
+            this.currentLng = lng;
+            container.innerHTML = `<iframe
+                src="https://maps.google.com/maps?q=${lat},${lng}&z=14&output=embed&hl=es"
+                style="width:100%;height:100%;border:none;border-radius:0.75rem"
+                allowfullscreen loading="lazy">
+            </iframe>`;
+        };
+
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (pos) => cargarMapa(pos.coords.latitude, pos.coords.longitude),
+                ()    => cargarMapa(10.4806, -66.9036)
+            );
+        } else {
+            cargarMapa(10.4806, -66.9036);
+        }
+    },
+
+    setLocation(lat, lng) {
+        this.currentLat = lat;
+        this.currentLng = lng;
+
+        const container = document.getElementById('catch-map');
+        if (container) {
+            container.innerHTML = `<iframe
+                src="https://maps.google.com/maps?q=${lat},${lng}&z=15&output=embed&hl=es"
+                style="width:100%;height:100%;border:none;border-radius:0.75rem"
+                allowfullscreen loading="lazy">
+            </iframe>`;
+        }
+
+        // Mostrar indicador de ubicación en el formulario
+        const display = document.getElementById('catch-location-display');
+        const text    = document.getElementById('catch-location-text');
+        if (display) display.classList.remove('hidden');
+        if (text) text.textContent = `Ubicación: ${parseFloat(lat).toFixed(4)}, ${parseFloat(lng).toFixed(4)}`;
+    },
+
+    // ── FORMULARIO ────────────────────────────────────────────────────────────
+
+    setupForm() {
+        this.form = document.getElementById('catch-form');
+        if (!this.form) return;
+
+        this.form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.saveCatch();
         });
-        
-        // Control de Notificaciones
-        if(notificationBtn) notificationBtn.addEventListener('click', () => notificationModal.classList.remove('hidden'));
-        if(closeNotificationModal) closeNotificationModal.addEventListener('click', () => notificationModal.classList.add('hidden'));
-        
-        // Control de SOS
-        if(sosBtn) sosBtn.addEventListener('click', () => sosModal.classList.remove('hidden'));
-        if(cancelSos) cancelSos.addEventListener('click', () => sosModal.classList.add('hidden'));
-        if(confirmSos) {
-            confirmSos.addEventListener('click', () => {
-                sosModal.classList.add('hidden');
-                alert('¡Señal de SOS enviada correctamente!');
-            });
-        }
-        
-        // Lógica de Seguimiento de Viaje
-        let tripActive = false;
-        let tripPaused = false;
-        let tripInterval;
-        let tripTime = 0;
-        let tripDistance = 0;
-        
-        if(startTripBtn) {
-            startTripBtn.addEventListener('click', () => {
-                if (!tripActive) {
-                    tripActive = true;
-                    tripPaused = false;
-                    tripTime = 0;
-                    tripDistance = 0;
-                    
-                    startTripBtn.disabled = true;
-                    pauseTripBtn.disabled = false;
-                    stopTripBtn.disabled = false;
-                    
-                    startTripTracking();
-                    
-                    if(connectionStatus) {
-                        connectionStatus.classList.remove('bg-red-500', 'bg-yellow-500');
-                        connectionStatus.classList.add('bg-green-500');
-                        connectionStatus.nextElementSibling.textContent = 'En línea';
-                    }
-                } else if (tripPaused) {
-                    tripPaused = false;
-                    startTripBtn.disabled = true;
-                    pauseTripBtn.disabled = false;
-                    pauseTripBtn.innerHTML = '<i class="fa fa-pause mr-1"></i> Pausar';
-                    startTripTracking();
-                }
-            });
-        }
-        
-        if(pauseTripBtn) {
-            pauseTripBtn.addEventListener('click', () => {
-                if (tripActive && !tripPaused) {
-                    tripPaused = true;
-                    startTripBtn.disabled = false;
-                    pauseTripBtn.innerHTML = '<i class="fa fa-play mr-1"></i> Continuar';
-                    clearInterval(tripInterval);
-                    
-                    if(connectionStatus) {
-                        connectionStatus.classList.remove('bg-green-500');
-                        connectionStatus.classList.add('bg-yellow-500');
-                        connectionStatus.nextElementSibling.textContent = 'Pausado';
-                    }
-                }
-            });
-        }
-        
-        if(stopTripBtn) {
-            stopTripBtn.addEventListener('click', () => {
-                if (tripActive) {
-                    tripActive = false;
-                    tripPaused = false;
-                    
-                    startTripBtn.disabled = false;
-                    pauseTripBtn.disabled = true;
-                    stopTripBtn.disabled = true;
-                    pauseTripBtn.innerHTML = '<i class="fa fa-pause mr-1"></i> Pausar';
-                    
-                    clearInterval(tripInterval);
-                    tripTime = 0;
-                    tripDistance = 0;
-                    updateTripDisplay();
-                    
-                    if(connectionStatus) {
-                        connectionStatus.classList.remove('bg-yellow-500');
-                        connectionStatus.classList.add('bg-green-500');
-                        connectionStatus.nextElementSibling.textContent = 'En línea';
-                    }
-                    
-                    alert('¡Viaje guardado correctamente!');
-                }
-            });
-        }
-        
-        function startTripTracking() {
-            tripInterval = setInterval(() => {
-                tripTime++;
-                if (!tripPaused) {
-                    tripDistance += 0.01; 
-                }
-                updateTripDisplay();
-            }, 1000);
-        }
-        
-        function updateTripDisplay() {
-            const hours = Math.floor(tripTime / 3600);
-            const minutes = Math.floor((tripTime % 3600) / 60);
-            const timeString = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-            const distanceString = tripDistance.toFixed(1);
-            const speed = tripTime > 0 ? (tripDistance / (tripTime / 3600)).toFixed(1) : '0.0';
-            
-            const tripStats = document.querySelectorAll('#trip-page .text-xl.font-bold');
-            if(tripStats.length >= 3) {
-                tripStats[0].innerHTML = `${distanceString} <span class="text-sm font-normal">km</span>`;
-                tripStats[1].innerHTML = `${timeString} <span class="text-sm font-normal">h</span>`;
-                tripStats[2].innerHTML = `${speed} <span class="text-sm font-normal">km/h</span>`;
-            }
-        }
-        
-        // Gráfico de Mareas
-        document.addEventListener('DOMContentLoaded', () => {
-            const tideChartCanvas = document.getElementById('tide-chart');
-            if(tideChartCanvas) {
-                const tideChartCtx = tideChartCanvas.getContext('2d');
-                const hours = Array.from({length: 24}, (_, i) => `${i}:00`);
-                const tideHeights = [
-                    1.2, 1.0, 0.8, 0.5, 0.3, 0.2, 0.4, 0.8, 1.3, 1.8, 2.1, 2.2,
-                    2.0, 1.7, 1.3, 0.9, 0.6, 0.4, 0.3, 0.5, 0.9, 1.4, 1.8, 1.5
-                ];
-                
-                const tideChart = new Chart(tideChartCtx, {
-                    type: 'line',
-                    data: {
-                        labels: hours,
-                        datasets: [{
-                            label: 'Altura de marea (m)',
-                            data: tideHeights,
-                            borderColor: '#0066cc',
-                            backgroundColor: 'rgba(0, 102, 204, 0.1)',
-                            borderWidth: 2,
-                            fill: true,
-                            tension: 0.4,
-                            pointBackgroundColor: '#0066cc',
-                            pointRadius: 3,
-                            pointHoverRadius: 5
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: { legend: { display: false } },
-                        scales: {
-                            x: { grid: { display: false }, ticks: { maxTicksLimit: 12 } },
-                            y: { beginAtZero: true, grid: { color: 'rgba(0, 0, 0, 0.05)' } }
-                        }
-                    }
-                });
-                
-                const tideTabs = document.querySelectorAll('[data-tide]');
-                tideTabs.forEach(tab => {
-                    tab.addEventListener('click', () => {
-                        tideTabs.forEach(t => t.classList.remove('active'));
-                        tab.classList.add('active');
-                        if (tab.dataset.tide === 'tomorrow') {
-                            tideChart.data.datasets[0].data = [
-                                1.5, 1.3, 1.1, 0.8, 0.5, 0.3, 0.5, 1.0, 1.5, 2.0, 2.3, 2.4,
-                                2.2, 1.9, 1.5, 1.1, 0.8, 0.5, 0.4, 0.6, 1.1, 1.6, 2.0, 1.7
-                            ];
-                        } else {
-                            tideChart.data.datasets[0].data = tideHeights;
-                        }
-                        tideChart.update();
-                    });
-                });
-            }
-            
-            // Inicializar mapas (coordenadas de ejemplo actualizadas para zona costera)
-            if(typeof L !== 'undefined') {
-                const defaultCenter = [-33.0456, -71.6200]; // Valparaíso, Chile
-                
-                if(document.getElementById('map')) {
-                    const map = L.map('map').setView(defaultCenter, 13);
-                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-                    L.marker(defaultCenter).addTo(map);
-                }
-                
-                if(document.getElementById('trip-map')) {
-                    const tripMap = L.map('trip-map').setView(defaultCenter, 13);
-                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(tripMap);
-                }
-                
-                if(document.getElementById('catch-map')) {
-                    const catchMap = L.map('catch-map').setView(defaultCenter, 13);
-                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(catchMap);
-                }
-                
-                if(document.getElementById('community-map')) {
-                    const communityMap = L.map('community-map').setView(defaultCenter, 13);
-                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(communityMap);
-                }
+
+        this.setupPhotoUpload();
+    },
+
+    setupPhotoUpload() {
+        const area  = document.getElementById('photo-upload-area');
+        const input = document.getElementById('catch-photo-input');
+        if (!area || !input) return;
+
+        area.addEventListener('click', (e) => {
+            if (!e.target.closest('.remove-photo')) input.click();
+        });
+
+        input.addEventListener('change', (e) => {
+            if (e.target.files && e.target.files[0]) {
+                this.previewImage(e.target.files[0]);
             }
         });
-        
-        // Formulario de Captura
-        const catchForm = document.getElementById('catch-form');
-        if (catchForm) {
-            catchForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                alert('¡Registro de captura guardado correctamente!');
-                catchForm.reset();
+    },
+
+    previewImage(file) {
+        if (!file.type.match('image.*')) {
+            alert('Por favor selecciona un archivo de imagen');
+            return;
+        }
+        const area = document.getElementById('photo-upload-area');
+        if (!area) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            area.innerHTML = `
+                <div class="relative">
+                    <img src="${e.target.result}" alt="Vista previa" class="w-full h-40 object-cover rounded-lg">
+                    <button type="button" class="remove-photo absolute top-2 right-2 bg-white rounded-full w-7 h-7 flex items-center justify-center shadow-md">
+                        <i class="fa fa-times text-gray-600"></i>
+                    </button>
+                </div>
+            `;
+            area.querySelector('.remove-photo').addEventListener('click', () => this.resetPhotoUpload());
+        };
+        reader.readAsDataURL(file);
+    },
+
+    resetPhotoUpload() {
+        const area = document.getElementById('photo-upload-area');
+        if (!area) return;
+        area.innerHTML = `
+            <i class="fa fa-camera text-gray-400 text-3xl mb-2"></i>
+            <p class="text-sm text-gray-600">Toca aquí para subir una foto</p>
+            <input type="file" name="photo" id="catch-photo-input" class="hidden" accept="image/*">
+        `;
+        this.setupPhotoUpload();
+    },
+
+    // ── EVENTOS ───────────────────────────────────────────────────────────────
+
+    setupEventListeners() {
+        // Botón Añadir Marcador — usa GPS real
+        const addMarkerBtn = document.querySelector('#catch-page .text-primary.text-sm');
+        if (addMarkerBtn) {
+            addMarkerBtn.addEventListener('click', () => {
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(
+                        (pos) => {
+                            this.setLocation(pos.coords.latitude, pos.coords.longitude);
+                        },
+                        () => alert('No se pudo obtener tu ubicación')
+                    );
+                }
             });
         }
-        
-        // Pestañas Genéricas
-        const tabs = document.querySelectorAll('.tab:not([data-tide])');
-        tabs.forEach(tab => {
+
+        // Filtros
+        const filterTabs = document.querySelectorAll('#catch-page .tab[data-filter]');
+        filterTabs.forEach(tab => {
             tab.addEventListener('click', () => {
-                const parent = tab.parentElement;
-                parent.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                filterTabs.forEach(t => t.classList.remove('active'));
                 tab.classList.add('active');
+                this.filterCatches(tab.dataset.filter);
             });
         });
+    },
 
-        // --- LÓGICA DE AUTENTICACIÓN Y REGISTRO ---
-        const loginForm = document.getElementById('login-form');
-        const registerForm = document.getElementById('register-form');
-        const toggleAuthBtn = document.getElementById('toggle-auth');
-        const authTitle = document.getElementById('auth-title');
+    // ── GUARDAR ───────────────────────────────────────────────────────────────
 
-        // 1. Cambiar visualmente entre Iniciar Sesión y Registro
-        if (toggleAuthBtn) {
-            toggleAuthBtn.addEventListener('click', () => {
-                if (loginForm.classList.contains('hidden')) {
-                    loginForm.classList.remove('hidden');
-                    registerForm.classList.add('hidden');
-                    authTitle.textContent = 'Iniciar Sesión';
-                    toggleAuthBtn.textContent = '¿No tienes cuenta? Regístrate aquí';
-                } else {
-                    loginForm.classList.add('hidden');
-                    registerForm.classList.remove('hidden');
-                    authTitle.textContent = 'Crear Cuenta';
-                    toggleAuthBtn.textContent = '¿Ya tienes cuenta? Inicia sesión aquí';
-                }
-            });
+    saveCatch() {
+        if (!this.form) return;
+
+        const especie  = this.form.querySelector('[name="species"]')?.value;
+        const longitud = this.form.querySelector('[name="length"]')?.value;
+        const peso     = this.form.querySelector('[name="weight"]')?.value;
+        const cebo     = this.form.querySelector('[name="bait"]')?.value || '';
+        const prof     = this.form.querySelector('[name="depth"]')?.value || '';
+        const notas    = this.form.querySelector('[name="notes"]')?.value || '';
+
+        if (!especie) { alert('Por favor selecciona la especie'); return; }
+        if (!longitud) { alert('Por favor ingresa la longitud'); return; }
+        if (!peso)     { alert('Por favor ingresa el peso'); return; }
+
+        const lat = this.currentLat;
+        const lng = this.currentLng;
+        if (!lat || !lng) {
+            alert('Pulsa "Añadir Marcador" para registrar la ubicación de la captura');
+            return;
         }
 
-        // 2. Enviar datos de Registro a PostgreSQL
-        if (registerForm) {
-            registerForm.addEventListener('submit', async (e) => {
-                e.preventDefault(); // Evita que la página se recargue
+        const catchData = {
+            id: 'captura_' + Date.now(),
+            especie, longitud, peso, cebo, prof, notas,
+            latitud: lat, longitud_coord: lng,
+            timestamp: Date.now(),
+            imagen: null
+        };
 
-                // Recolectamos lo que el usuario escribió
-                const nombre = document.getElementById('reg-nombre').value;
-                const email = document.getElementById('reg-email').value;
-                const password = document.getElementById('reg-password').value;
-                const contacto_emergencia = document.getElementById('reg-emergencia').value;
+        // Procesar imagen
+        const input    = document.getElementById('catch-photo-input');
+        const preview  = document.querySelector('#photo-upload-area img');
 
-                try {
-                    // Enviamos la petición POST a tu backend
-                    const response = await fetch('/api/usuarios/registro', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            nombre,
-                            email,
-                            password,
-                            contacto_emergencia,
-                            idioma: 'es'
-                        })
-                    });
+        if (input && input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                catchData.imagen = e.target.result;
+                this.finalizeSave(catchData);
+            };
+            reader.readAsDataURL(input.files[0]);
+        } else {
+            if (preview) catchData.imagen = preview.src;
+            this.finalizeSave(catchData);
+        }
+    },
 
-                    // Leemos la respuesta del servidor
-                    const data = await response.json();
+    finalizeSave(catchData) {
+        // Si es edición, reemplazar
+        const editId = this.form.dataset.editId;
+        if (editId) {
+            this.catches = this.catches.map(c => c.id === editId ? { ...catchData, id: editId } : c);
+            delete this.form.dataset.editId;
+        } else {
+            this.catches.push(catchData);
+        }
 
-                    if (response.ok) {
-                        // Si todo sale bien (status 201)
-                        alert('¡Éxito! ' + data.mensaje + '. Ahora puedes iniciar sesión.');
-                        toggleAuthBtn.click(); // Lo devolvemos a la pantalla de Login
-                        registerForm.reset(); // Limpiamos el formulario
-                    } else {
-                        // Si el correo ya existe o hay otro error
-                        alert('Error: ' + (data.mensaje || 'No se pudo crear el usuario'));
+        localStorage.setItem('pzkayak_catches', JSON.stringify(this.catches));
+        this.form.reset();
+        this.resetPhotoUpload();
+
+        const display = document.getElementById('catch-location-display');
+        if (display) display.classList.add('hidden');
+
+        const submitBtn = this.form.querySelector('button[type="submit"]');
+        if (submitBtn) submitBtn.innerHTML = '<i class="fa fa-save mr-1"></i> Guardar Captura';
+
+        this.updateCatchList();
+        alert('¡Captura guardada correctamente!');
+    },
+
+    loadCatches() {
+        try {
+            this.catches = JSON.parse(localStorage.getItem('pzkayak_catches') || '[]');
+        } catch { this.catches = []; }
+    },
+
+    // ── LISTA ─────────────────────────────────────────────────────────────────
+
+    updateCatchList() {
+        this.renderList([...this.catches].sort((a, b) => b.timestamp - a.timestamp));
+    },
+
+    filterCatches(filtro) {
+        let lista = [...this.catches];
+        if (filtro === 'recent') {
+            const hace7dias = Date.now() - 7 * 24 * 60 * 60 * 1000;
+            lista = lista.filter(c => c.timestamp >= hace7dias);
+        }
+        this.renderList(lista.sort((a, b) => b.timestamp - a.timestamp), filtro);
+    },
+
+    renderList(capturas, filtro = 'all') {
+        const contenedor = document.getElementById('catch-list');
+        if (!contenedor) return;
+        contenedor.innerHTML = '';
+
+        if (capturas.length === 0) {
+            contenedor.innerHTML = `<div class="text-center py-6 text-gray-500">
+                <i class="fa fa-fish text-3xl mb-2 block text-gray-300"></i>
+                ${filtro === 'recent' ? 'Sin capturas en los últimos 7 días' : 'Sin capturas registradas aún'}
+            </div>`;
+            return;
+        }
+
+        capturas.forEach(c => {
+            const fecha = new Date(c.timestamp).toLocaleDateString('es-ES');
+            const hora  = new Date(c.timestamp).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+
+            const item = document.createElement('div');
+            item.className = 'flex items-center p-3 bg-gray-50 rounded-lg gap-3';
+            item.innerHTML = `
+                <div class="w-16 h-16 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
+                    ${c.imagen
+                        ? `<img src="${c.imagen}" alt="${c.especie}" class="w-full h-full object-cover">`
+                        : `<div class="w-full h-full flex items-center justify-center"><i class="fa fa-fish text-gray-400 text-2xl"></i></div>`
                     }
-                } catch (error) {
-                    console.error('Error:', error);
-                    alert('Hubo un problema de conexión con el servidor.');
-                }
-            });
+                </div>
+                <div class="flex-1 min-w-0">
+                    <p class="font-semibold truncate">${c.especie}</p>
+                    <p class="text-sm text-gray-600">${c.longitud}cm · ${c.peso}kg</p>
+                    <p class="text-xs text-gray-400">${fecha} ${hora}</p>
+                </div>
+                <div class="flex gap-2 flex-shrink-0">
+                    <button class="text-gray-400 hover:text-blue-500 edit-catch p-1" data-id="${c.id}">
+                        <i class="fa fa-pencil"></i>
+                    </button>
+                    <button class="text-gray-400 hover:text-red-500 delete-catch p-1" data-id="${c.id}">
+                        <i class="fa fa-trash"></i>
+                    </button>
+                </div>
+            `;
+            item.querySelector('.edit-catch').addEventListener('click',   () => this.editCatch(c.id));
+            item.querySelector('.delete-catch').addEventListener('click', () => this.deleteCatch(c.id));
+            contenedor.appendChild(item);
+        });
+    },
+
+    // ── EDITAR / ELIMINAR ─────────────────────────────────────────────────────
+
+    editCatch(id) {
+        const c = this.catches.find(x => x.id === id);
+        if (!c || !this.form) return;
+
+        this.form.querySelector('[name="species"]').value = c.especie;
+        this.form.querySelector('[name="length"]').value  = c.longitud;
+        this.form.querySelector('[name="weight"]').value  = c.peso;
+        this.form.querySelector('[name="bait"]').value    = c.cebo || '';
+        this.form.querySelector('[name="depth"]').value   = c.prof || '';
+        this.form.querySelector('[name="notes"]').value   = c.notas || '';
+
+        if (c.latitud && c.longitud_coord) {
+            this.setLocation(c.latitud, c.longitud_coord);
         }
 
-     // 3. Conexión Real del Login
-        if (loginForm) {
-            loginForm.addEventListener('submit', async (e) => {
-                e.preventDefault(); // Evitamos que la página se recargue
-
-                const email = document.getElementById('login-email').value;
-                const password = document.getElementById('login-password').value;
-
-                try {
-                    // Hacemos la petición a nuestra nueva ruta de login
-                    const response = await fetch('/api/usuarios/login', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({ email, password })
-                    });
-
-                    const data = await response.json();
-
-                    if (response.ok) {
-                        // ¡Login exitoso! Mostramos el dashboard de la app
-                        alert('¡Bienvenido a PzKayak Connect!');
-                        document.getElementById('auth-page').classList.remove('active');
-                        document.getElementById('dashboard-page').classList.add('active');
-                        document.querySelector('.nav-item[data-page="dashboard-page"]').classList.add('active');
-                        
-                        // Limpiamos los campos por seguridad
-                        loginForm.reset();
-                    } else {
-                        // Mostramos el error exacto que nos devolvió el servidor (correo o contraseña incorrectos)
-                        alert('Error: ' + data.mensaje);
-                    }
-                } catch (error) {
-                    console.error('Error al iniciar sesión:', error);
-                    alert('Problema de conexión con el servidor.');
-                }
-            });
+        if (c.imagen) {
+            const area = document.getElementById('photo-upload-area');
+            if (area) {
+                area.innerHTML = `
+                    <div class="relative">
+                        <img src="${c.imagen}" alt="${c.especie}" class="w-full h-40 object-cover rounded-lg">
+                        <button type="button" class="remove-photo absolute top-2 right-2 bg-white rounded-full w-7 h-7 flex items-center justify-center shadow-md">
+                            <i class="fa fa-times text-gray-600"></i>
+                        </button>
+                    </div>
+                `;
+                area.querySelector('.remove-photo').addEventListener('click', () => this.resetPhotoUpload());
+            }
         }
-    </script>
-</body>
-</html>
+
+        this.form.dataset.editId = id;
+        const submitBtn = this.form.querySelector('button[type="submit"]');
+        if (submitBtn) submitBtn.innerHTML = '<i class="fa fa-save mr-1"></i> Actualizar Captura';
+
+        this.form.scrollIntoView({ behavior: 'smooth' });
+    },
+
+    deleteCatch(id) {
+        if (confirm('¿Eliminar esta captura?')) {
+            this.catches = this.catches.filter(c => c.id !== id);
+            localStorage.setItem('pzkayak_catches', JSON.stringify(this.catches));
+            this.updateCatchList();
+        }
+    }
+};
+
+window.catchLog = catchLog;
