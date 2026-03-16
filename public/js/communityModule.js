@@ -1,480 +1,410 @@
 /**
- * Community & Matching Module
- * Handles friend location sharing, real-time location display, group fishing trip creation, and nearby fisher matching
+ * Módulo de Comunidad - PzKayak Connect
  */
 
 const communityModule = {
-    // User data
+
     currentUser: {
-        id: 'user_001',
-        name: 'Username',
-        avatar: null,
-        coordinates: [36.0671, 120.3826],
-        preferences: {
-            fishingType: 'Sea Fishing',
-            experienceLevel: 'Intermediate',
-            favoriteLocations: []
-        }
+        id: 'user_yo',
+        nombre: 'Tú',
+        coordinates: [10.4806, -66.9036] // fallback Caracas, se reemplaza con GPS
     },
-    
-    // Friends list
-    friends: [
+
+    amigos: [
+        { id: 'u_carlos',  nombre: 'Carlos',   estado: 'online',  distancia: 2.5, coordinates: [10.4830, -66.9100] },
+        { id: 'u_miguel',  nombre: 'Miguel',   estado: 'online',  distancia: 5.8, coordinates: [10.4900, -66.9200] },
+        { id: 'u_roberto', nombre: 'Roberto',  estado: 'offline', distancia: 8.3, coordinates: [10.4950, -66.9300] }
+    ],
+
+    cercanos: [
+        { id: 'u_dana',  nombre: 'Dana',  distancia: 3.2, tipo: 'Pesca en mar',   nivel: 'Avanzado' },
+        { id: 'u_elena', nombre: 'Elena', distancia: 4.5, tipo: 'Pesca en río',   nivel: 'Intermedio' },
+        { id: 'u_pedro', nombre: 'Pedro', distancia: 6.1, tipo: 'Pesca en kayak', nivel: 'Principiante' }
+    ],
+
+    actividades: [
         {
-            id: 'user_002',
-            name: 'Fisher Alex',
-            avatar: null,
-            coordinates: [36.0700, 120.3900],
-            status: 'online',
-            distance: 2.5
+            id: 'act_001',
+            titulo: 'Pesca de Fin de Semana',
+            fecha: '2025-07-26', hora: '08:00',
+            lugar: 'Zona costera central',
+            participantes: ['u_carlos', 'u_miguel', 'u_roberto'],
+            maxParticipantes: 10,
+            estado: 'ongoing'
         },
         {
-            id: 'user_003',
-            name: 'Fisher Blake',
-            avatar: null,
-            coordinates: [36.0750, 120.3950],
-            status: 'online',
-            distance: 5.8
-        },
-        {
-            id: 'user_004',
-            name: 'Fisher Chris',
-            avatar: null,
-            coordinates: [36.0800, 120.4000],
-            status: 'online',
-            distance: 8.3
+            id: 'act_002',
+            titulo: 'Clase de Kayak para Principiantes',
+            fecha: '2025-08-05', hora: '14:00',
+            lugar: 'Centro Náutico',
+            participantes: ['u_dana'],
+            maxParticipantes: 15,
+            estado: 'upcoming'
         }
     ],
-    
-    // Nearby fishers
-    nearbyFishers: [
-        {
-            id: 'user_005',
-            name: 'Fisher Dana',
-            avatar: null,
-            coordinates: [36.0680, 120.3850],
-            distance: 3.2,
-            preferences: {
-                fishingType: 'Sea Fishing',
-                experienceLevel: 'Advanced'
-            }
-        },
-        {
-            id: 'user_006',
-            name: 'Fisher Ellis',
-            avatar: null,
-            coordinates: [36.0690, 120.3870],
-            distance: 4.5,
-            preferences: {
-                fishingType: 'Freshwater Fishing',
-                experienceLevel: 'Intermediate'
-            }
-        }
+
+    colores: [
+        'bg-blue-100 text-blue-600',
+        'bg-green-100 text-green-600',
+        'bg-orange-100 text-orange-600',
+        'bg-purple-100 text-purple-600',
+        'bg-red-100 text-red-600',
+        'bg-yellow-100 text-yellow-700'
     ],
-    
-    // Group activities
-    groupActivities: [
-        {
-            id: 'activity_001',
-            title: 'Weekend Sea Fishing',
-            description: 'Join us for a sea fishing session near the pier',
-            date: '2025-07-26',
-            time: '08:00',
-            location: 'Near the Coastal Pier',
-            coordinates: [36.0600, 120.3800],
-            organizer: 'user_002',
-            participants: ['user_002', 'user_003', 'user_004', 'user_007', 'user_008'],
-            status: 'ongoing',
-            maxParticipants: 10
-        },
-        {
-            id: 'activity_002',
-            title: 'Beginner Kayak Fishing Class',
-            description: 'Basic kayak fishing techniques for beginners',
-            date: '2025-08-05',
-            time: '14:00',
-            location: 'Olympic Sailing Center',
-            coordinates: [36.0500, 120.3900],
-            organizer: 'user_002',
-            participants: ['user_002', 'user_009', 'user_010', 'user_011', 'user_012', 'user_013'],
-            status: 'upcoming',
-            maxParticipants: 15
-        }
-    ],
-    
-    // Map related
-    map: null,
-    markers: [],
-    
+
+    colorPara(nombre) {
+        let hash = 0;
+        for (let c of nombre) hash += c.charCodeAt(0);
+        return this.colores[hash % this.colores.length];
+    },
+
     init() {
         this.setupMap();
         this.setupEventListeners();
-        this.updateFriendList();
-        this.updateNearbyFishers();
-        this.updateGroupActivities();
+        this.render();
     },
-    
+
+    // ── MAPA ──────────────────────────────────────────────────────────────────
+
     setupMap() {
         const container = document.getElementById('community-map');
         if (!container) return;
 
-        const cargarMapa = (lat, lng) => {
+        const cargar = (lat, lng) => {
             this.currentUser.coordinates = [lat, lng];
-            container.innerHTML = `<iframe 
-                src="https://maps.google.com/maps?q=${lat},${lng}&z=14&output=embed&hl=es"
-                style="width:100%;height:100%;border:none;border-radius:0.75rem"
-                allowfullscreen loading="lazy">
-            </iframe>`;
+            // Ajustar coordenadas de amigos relativas al usuario real
+            this.amigos.forEach((a, i) => {
+                a.coordinates = [lat + (i + 1) * 0.005, lng + (i + 1) * 0.009];
+            });
+            this.mostrarMapa(lat, lng);
         };
 
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
-                (pos) => cargarMapa(pos.coords.latitude, pos.coords.longitude),
-                ()    => cargarMapa(this.currentUser.coordinates[0], this.currentUser.coordinates[1])
+                pos => cargar(pos.coords.latitude, pos.coords.longitude),
+                ()  => cargar(this.currentUser.coordinates[0], this.currentUser.coordinates[1])
             );
         } else {
-            cargarMapa(this.currentUser.coordinates[0], this.currentUser.coordinates[1]);
+            cargar(this.currentUser.coordinates[0], this.currentUser.coordinates[1]);
         }
     },
-    
-    setupEventListeners() {
-        const refreshBtn = document.querySelector('#community-page .text-primary.text-sm');
-        if (refreshBtn) {
-            refreshBtn.addEventListener('click', () => this.refreshLocations());
-        }
-        
-        const friendLocationBtns = document.querySelectorAll('#community-page .fa-map-marker');
-        friendLocationBtns.forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const friendItem = e.target.closest('.flex.items-center');
-                if (friendItem) {
-                    const friendName = friendItem.querySelector('.font-medium').textContent;
-                    this.showFriendLocation(friendName);
-                }
-            });
-        });
-        
-        const friendMessageBtns = document.querySelectorAll('#community-page .fa-comment');
-        friendMessageBtns.forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const friendItem = e.target.closest('.flex.items-center');
-                if (friendItem) {
-                    const friendName = friendItem.querySelector('.font-medium').textContent;
-                    this.sendMessage(friendName);
-                }
-            });
-        });
-        
-        const addFriendBtns = document.querySelectorAll('#community-page .btn.btn-primary.text-sm');
-        addFriendBtns.forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const fisherItem = e.target.closest('.flex.items-center');
-                if (fisherItem) {
-                    const fisherName = fisherItem.querySelector('.font-medium').textContent;
-                    this.addFriend(fisherName);
-                }
-            });
-        });
-        
-        const joinActivityBtns = document.querySelectorAll('#community-page .btn.btn-secondary.text-sm');
-        joinActivityBtns.forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const activityItem = e.target.closest('.p-3.bg-gray-50');
-                if (activityItem) {
-                    const activityTitle = activityItem.querySelector('h3').textContent;
-                    this.joinActivity(activityTitle);
-                }
-            });
-        });
-        
-        const createActivityBtn = document.querySelector('#community-page .btn.btn-primary.text-sm');
-        if (createActivityBtn) {
-            createActivityBtn.addEventListener('click', () => this.createActivity());
-        }
-    },
-    
-    addUserMarker() {
-        // Handled by Google Maps embed
-    },
-    
-    addFriendMarkers() {
-        // Handled by Google Maps embed
-    },
-    
-    updateFriendList() {
-        const friendListContainer = document.querySelector('#community-page .space-y-3');
-        if (!friendListContainer) return;
-        
-        friendListContainer.innerHTML = '';
-        
-        this.friends.forEach(friend => {
-            const avatarInitial = friend.name.charAt(0);
-            const avatarColors = ['bg-blue-100 text-primary', 'bg-green-100 text-secondary', 'bg-orange-100 text-accent'];
-            const avatarColor = avatarColors[Math.floor(Math.random() * avatarColors.length)];
-            
-            const friendItem = document.createElement('div');
-            friendItem.className = 'flex items-center p-2 bg-gray-50 rounded-lg';
-            friendItem.innerHTML = `
-                <div class="w-10 h-10 ${avatarColor} rounded-full flex items-center justify-center mr-3">
-                    <span class="font-bold">${avatarInitial}</span>
-                </div>
-                <div class="flex-1">
-                    <p class="font-medium">${friend.name}</p>
-                    <p class="text-sm text-gray-600">${friend.status === 'online' ? 'Online' : 'Offline'} · ${friend.distance} km away</p>
-                </div>
-                <div class="flex space-x-2">
-                    <button class="text-primary friend-location" data-name="${friend.name}">
-                        <i class="fa fa-map-marker"></i>
-                    </button>
-                    <button class="text-primary friend-message" data-name="${friend.name}">
-                        <i class="fa fa-comment"></i>
-                    </button>
-                </div>
-            `;
-            
-            friendItem.querySelector('.friend-location').addEventListener('click', () => this.showFriendLocation(friend.name));
-            friendItem.querySelector('.friend-message').addEventListener('click', () => this.sendMessage(friend.name));
-            
-            friendListContainer.appendChild(friendItem);
-        });
-        
-        if (this.friends.length === 0) {
-            const emptyMessage = document.createElement('div');
-            emptyMessage.className = 'text-center py-4 text-gray-500';
-            emptyMessage.textContent = 'No friends yet — add some from Nearby Fishers!';
-            friendListContainer.appendChild(emptyMessage);
-        }
-    },
-    
-    updateNearbyFishers() {
-        const nearbyContainer = document.querySelector('#community-page .space-y-3:last-child');
-        if (!nearbyContainer) return;
-        
-        nearbyContainer.innerHTML = '';
-        
-        this.nearbyFishers.forEach(fisher => {
-            const avatarInitial = fisher.name.charAt(0);
-            const avatarColors = ['bg-purple-100 text-purple-600', 'bg-red-100 text-red-600', 'bg-yellow-100 text-yellow-600'];
-            const avatarColor = avatarColors[Math.floor(Math.random() * avatarColors.length)];
-            
-            const fisherItem = document.createElement('div');
-            fisherItem.className = 'flex items-center p-2 bg-gray-50 rounded-lg';
-            fisherItem.innerHTML = `
-                <div class="w-10 h-10 ${avatarColor} rounded-full flex items-center justify-center mr-3">
-                    <span class="font-bold">${avatarInitial}</span>
-                </div>
-                <div class="flex-1">
-                    <p class="font-medium">${fisher.name}</p>
-                    <p class="text-sm text-gray-600">${fisher.distance} km away · Likes ${fisher.preferences.fishingType}</p>
-                </div>
-                <button class="btn btn-primary text-sm add-friend" data-name="${fisher.name}">
-                    Add Friend
-                </button>
-            `;
-            
-            fisherItem.querySelector('.add-friend').addEventListener('click', () => this.addFriend(fisher.name));
-            nearbyContainer.appendChild(fisherItem);
-        });
-        
-        if (this.nearbyFishers.length === 0) {
-            const emptyMessage = document.createElement('div');
-            emptyMessage.className = 'text-center py-4 text-gray-500';
-            emptyMessage.textContent = 'No nearby fishers found';
-            nearbyContainer.appendChild(emptyMessage);
-        }
-    },
-    
-    updateGroupActivities() {
-        const activityContainer = document.querySelector('#community-page .space-y-3:nth-child(2)');
-        if (!activityContainer) return;
-        
-        activityContainer.innerHTML = '';
-        
-        this.groupActivities.forEach(activity => {
-            const date = new Date(activity.date).toLocaleDateString('en-US', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-            });
-            
-            const participantCount = activity.participants.length;
-            let participantAvatars = '';
-            
-            for (let i = 0; i < Math.min(3, participantCount); i++) {
-                const avatarColors = ['bg-blue-100 text-primary', 'bg-green-100 text-secondary', 'bg-orange-100 text-accent'];
-                participantAvatars += `
-                    <div class="w-8 h-8 ${avatarColors[i % avatarColors.length]} rounded-full flex items-center justify-center border-2 border-white">
-                        <span class="text-xs font-bold">${String.fromCharCode(65 + i)}</span>
-                    </div>
-                `;
-            }
-            
-            if (participantCount > 3) {
-                participantAvatars += `
-                    <div class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center border-2 border-white">
-                        <span class="text-xs font-bold text-gray-600">+${participantCount - 3}</span>
-                    </div>
-                `;
-            }
-            
-            const statusClass = activity.status === 'ongoing' ? 'bg-blue-100 text-primary' : 'bg-gray-100 text-gray-600';
-            const statusText = activity.status === 'ongoing' ? 'Ongoing' : 'Upcoming';
-            
-            const activityItem = document.createElement('div');
-            activityItem.className = 'p-3 bg-gray-50 rounded-lg';
-            activityItem.innerHTML = `
-                <div class="flex items-center justify-between mb-2">
-                    <h3 class="font-medium">${activity.title}</h3>
-                    <span class="text-xs ${statusClass} px-2 py-1 rounded-full">${statusText}</span>
-                </div>
-                <p class="text-sm text-gray-600 mb-2">Date: ${date} ${activity.time}</p>
-                <p class="text-sm text-gray-600 mb-2">Location: ${activity.location}</p>
-                <div class="flex items-center justify-between">
-                    <div class="flex -space-x-2">${participantAvatars}</div>
-                    <button class="btn btn-secondary text-sm join-activity" data-title="${activity.title}">Join</button>
-                </div>
-            `;
-            
-            activityItem.querySelector('.join-activity').addEventListener('click', () => this.joinActivity(activity.title));
-            activityContainer.appendChild(activityItem);
-        });
-        
-        if (this.groupActivities.length === 0) {
-            const emptyMessage = document.createElement('div');
-            emptyMessage.className = 'text-center py-4 text-gray-500';
-            emptyMessage.textContent = 'No group activities yet — create one!';
-            activityContainer.appendChild(emptyMessage);
-        }
-    },
-    
-    refreshLocations() {
-        const refreshBtn = document.querySelector('#community-page .text-primary.text-sm');
-        if (refreshBtn) {
-            const originalText = refreshBtn.innerHTML;
-            refreshBtn.innerHTML = '<i class="fa fa-spinner fa-spin mr-1"></i> Refreshing...';
-            refreshBtn.disabled = true;
-            
-            setTimeout(() => {
-                this.currentUser.coordinates = [
-                    this.currentUser.coordinates[0] + (Math.random() - 0.5) * 0.01,
-                    this.currentUser.coordinates[1] + (Math.random() - 0.5) * 0.01
-                ];
-                
-                this.friends.forEach(friend => {
-                    friend.coordinates = [
-                        friend.coordinates[0] + (Math.random() - 0.5) * 0.01,
-                        friend.coordinates[1] + (Math.random() - 0.5) * 0.01
-                    ];
-                    friend.distance = Math.round(this.calculateDistance(
-                        this.currentUser.coordinates[0], this.currentUser.coordinates[1],
-                        friend.coordinates[0], friend.coordinates[1]
-                    ) * 10) / 10;
-                });
-                
-                this.updateMap();
-                this.updateFriendList();
-                
-                refreshBtn.innerHTML = originalText;
-                refreshBtn.disabled = false;
-                this.showNotification('Location data updated');
-            }, 1000);
-        }
-    },
-    
-    updateMap() {
-        const [lat, lng] = this.currentUser.coordinates;
+
+    mostrarMapa(lat, lng, zoom = 14) {
         const container = document.getElementById('community-map');
         if (!container) return;
-        container.innerHTML = `<iframe 
-            src="https://maps.google.com/maps?q=${lat},${lng}&z=14&output=embed&hl=es"
+        container.innerHTML = `<iframe
+            src="https://maps.google.com/maps?q=${lat},${lng}&z=${zoom}&output=embed&hl=es"
             style="width:100%;height:100%;border:none;border-radius:0.75rem"
             allowfullscreen loading="lazy">
         </iframe>`;
     },
-    
-    showFriendLocation(friendName) {
-        const friend = this.friends.find(f => f.name === friendName);
-        if (!friend || !friend.coordinates) return;
-        const [lat, lng] = friend.coordinates;
-        const container = document.getElementById('community-map');
-        if (container) {
-            container.innerHTML = `<iframe 
-                src="https://maps.google.com/maps?q=${lat},${lng}&z=15&output=embed&hl=es"
-                style="width:100%;height:100%;border:none;border-radius:0.75rem"
-                allowfullscreen loading="lazy">
-            </iframe>`;
-        }
-        this.showNotification(`Ubicación de ${friendName}`);
+
+    mostrarUbicacionAmigo(amigo) {
+        const [lat, lng] = amigo.coordinates;
+        this.mostrarMapa(lat, lng, 15);
+        document.getElementById('community-map')?.scrollIntoView({ behavior: 'smooth' });
     },
-    
-    sendMessage(friendName) {
-        this.showNotification(`Sending message to ${friendName}`);
+
+    // ── EVENTOS ───────────────────────────────────────────────────────────────
+
+    setupEventListeners() {
+        document.getElementById('community-refresh-btn')
+            ?.addEventListener('click', () => this.refreshLocations());
+
+        document.getElementById('create-activity-btn')
+            ?.addEventListener('click', () => this.mostrarFormActividad());
     },
-    
-    addFriend(fisherName) {
-        const fisher = this.nearbyFishers.find(f => f.name === fisherName);
-        if (!fisher) return;
-        
-        if (this.friends.some(f => f.name === fisherName)) {
-            this.showNotification(`${fisherName} is already your friend`, 'warning');
+
+    // ── RENDER COMPLETO ───────────────────────────────────────────────────────
+
+    render() {
+        this.renderContadorOnline();
+        this.renderAmigos();
+        this.renderCercanos();
+        this.renderActividades();
+    },
+
+    renderContadorOnline() {
+        const el = document.getElementById('community-online-count');
+        if (!el) return;
+        const n = this.amigos.filter(a => a.estado === 'online').length;
+        el.textContent = `${n} amigo${n !== 1 ? 's' : ''} en línea`;
+    },
+
+    // ── AMIGOS ────────────────────────────────────────────────────────────────
+
+    renderAmigos() {
+        const cont = document.getElementById('friend-list');
+        if (!cont) return;
+        cont.innerHTML = '';
+
+        if (this.amigos.length === 0) {
+            cont.innerHTML = `<p class="text-center py-4 text-gray-500 text-sm">
+                Sin amigos aún — añade pescadores cercanos
+            </p>`;
             return;
         }
-        
-        this.friends.push({
-            id: fisher.id,
-            name: fisher.name,
-            avatar: fisher.avatar,
-            coordinates: fisher.coordinates,
-            status: 'online',
-            distance: fisher.distance
+
+        this.amigos.forEach(amigo => {
+            const item = document.createElement('div');
+            item.className = 'flex items-center p-3 bg-gray-50 rounded-lg gap-3';
+            item.innerHTML = `
+                <div class="w-10 h-10 ${this.colorPara(amigo.nombre)} rounded-full flex items-center justify-center flex-shrink-0 font-bold text-sm">
+                    ${amigo.nombre.charAt(0).toUpperCase()}
+                </div>
+                <div class="flex-1 min-w-0">
+                    <p class="font-medium">${amigo.nombre}</p>
+                    <p class="text-sm text-gray-500 flex items-center gap-1">
+                        <span class="inline-block w-2 h-2 rounded-full ${amigo.estado === 'online' ? 'bg-green-500' : 'bg-gray-400'}"></span>
+                        ${amigo.estado === 'online' ? 'En línea' : 'Desconectado'} · ${amigo.distancia} km
+                    </p>
+                </div>
+                <div class="flex gap-2">
+                    <button class="w-8 h-8 rounded-full bg-white border border-gray-200 flex items-center justify-center text-primary hover:bg-blue-50 btn-ubicar" title="Ver en mapa">
+                        <i class="fa fa-map-marker"></i>
+                    </button>
+                    <button class="w-8 h-8 rounded-full bg-white border border-gray-200 flex items-center justify-center text-primary hover:bg-blue-50 btn-mensaje" title="Mensaje">
+                        <i class="fa fa-comment"></i>
+                    </button>
+                    <button class="w-8 h-8 rounded-full bg-white border border-red-200 flex items-center justify-center text-red-400 hover:bg-red-50 btn-eliminar" title="Eliminar amigo">
+                        <i class="fa fa-times"></i>
+                    </button>
+                </div>
+            `;
+            item.querySelector('.btn-ubicar').onclick   = () => this.mostrarUbicacionAmigo(amigo);
+            item.querySelector('.btn-mensaje').onclick  = () => this.enviarMensaje(amigo);
+            item.querySelector('.btn-eliminar').onclick = () => this.eliminarAmigo(amigo.id);
+            cont.appendChild(item);
         });
-        
-        this.nearbyFishers = this.nearbyFishers.filter(f => f.name !== fisherName);
-        this.updateFriendList();
-        this.updateNearbyFishers();
-        this.addFriendMarkers();
-        this.showNotification(`${fisherName} added as a friend`);
     },
-    
-    joinActivity(activityTitle) {
-        const activity = this.groupActivities.find(a => a.title === activityTitle);
-        if (!activity) return;
-        
-        if (activity.participants.includes(this.currentUser.id)) {
-            this.showNotification('You have already joined this activity', 'warning');
+
+    eliminarAmigo(id) {
+        const amigo = this.amigos.find(a => a.id === id);
+        if (!amigo) return;
+        if (!confirm(`¿Eliminar a ${amigo.nombre} de tus amigos?`)) return;
+        this.amigos = this.amigos.filter(a => a.id !== id);
+        // Devolver a cercanos
+        this.cercanos.unshift({
+            id: amigo.id,
+            nombre: amigo.nombre,
+            distancia: amigo.distancia,
+            tipo: 'Pesca en kayak',
+            nivel: 'Intermedio'
+        });
+        this.render();
+    },
+
+    enviarMensaje(amigo) {
+        alert(`Chat con ${amigo.nombre} — función próximamente`);
+    },
+
+    // ── PESCADORES CERCANOS ───────────────────────────────────────────────────
+
+    renderCercanos() {
+        const cont = document.getElementById('nearby-list');
+        if (!cont) return;
+        cont.innerHTML = '';
+
+        if (this.cercanos.length === 0) {
+            cont.innerHTML = `<p class="text-center py-4 text-gray-500 text-sm">No hay pescadores cercanos</p>`;
             return;
         }
-        
-        if (activity.participants.length >= activity.maxParticipants) {
-            this.showNotification('This activity is full', 'error');
+
+        this.cercanos.forEach(pescador => {
+            const item = document.createElement('div');
+            item.className = 'flex items-center p-3 bg-gray-50 rounded-lg gap-3';
+            item.innerHTML = `
+                <div class="w-10 h-10 ${this.colorPara(pescador.nombre)} rounded-full flex items-center justify-center flex-shrink-0 font-bold text-sm">
+                    ${pescador.nombre.charAt(0).toUpperCase()}
+                </div>
+                <div class="flex-1 min-w-0">
+                    <p class="font-medium">${pescador.nombre}</p>
+                    <p class="text-sm text-gray-500">${pescador.distancia} km · ${pescador.tipo} · ${pescador.nivel}</p>
+                </div>
+                <button class="btn btn-primary text-xs px-3 py-1 btn-agregar flex-shrink-0">
+                    <i class="fa fa-user-plus mr-1"></i> Añadir
+                </button>
+            `;
+            item.querySelector('.btn-agregar').onclick = () => this.agregarAmigo(pescador);
+            cont.appendChild(item);
+        });
+    },
+
+    agregarAmigo(pescador) {
+        if (this.amigos.some(a => a.id === pescador.id)) {
+            alert(`${pescador.nombre} ya es tu amigo`); return;
+        }
+        const [lat, lng] = this.currentUser.coordinates;
+        this.amigos.push({
+            id: pescador.id,
+            nombre: pescador.nombre,
+            estado: 'online',
+            distancia: pescador.distancia,
+            coordinates: [
+                lat + (Math.random() - 0.5) * 0.05,
+                lng + (Math.random() - 0.5) * 0.05
+            ]
+        });
+        this.cercanos = this.cercanos.filter(p => p.id !== pescador.id);
+        this.render();
+        alert(`¡${pescador.nombre} añadido como amigo!`);
+    },
+
+    // ── ACTIVIDADES ───────────────────────────────────────────────────────────
+
+    renderActividades() {
+        const cont = document.getElementById('activity-list');
+        if (!cont) return;
+        cont.innerHTML = '';
+
+        if (this.actividades.length === 0) {
+            cont.innerHTML = `<p class="text-center py-4 text-gray-500 text-sm">Sin actividades — ¡crea una!</p>`;
             return;
         }
-        
-        activity.participants.push(this.currentUser.id);
-        this.updateGroupActivities();
-        this.showNotification(`Successfully joined "${activityTitle}"`);
+
+        this.actividades.forEach(act => {
+            const fecha    = new Date(act.fecha + 'T' + act.hora).toLocaleDateString('es-ES', { day: 'numeric', month: 'long' });
+            const yaUnido  = act.participantes.includes(this.currentUser.id);
+            const lleno    = act.participantes.length >= act.maxParticipantes;
+            const pct      = Math.round(act.participantes.length / act.maxParticipantes * 100);
+
+            const statusBadge = act.estado === 'ongoing'
+                ? 'bg-blue-100 text-blue-700'
+                : 'bg-green-100 text-green-700';
+            const statusText = act.estado === 'ongoing' ? 'En curso' : 'Próximamente';
+
+            const item = document.createElement('div');
+            item.className = 'p-3 bg-gray-50 rounded-lg mb-2';
+            item.innerHTML = `
+                <div class="flex items-start justify-between mb-2">
+                    <h3 class="font-medium flex-1 mr-2">${act.titulo}</h3>
+                    <span class="text-xs ${statusBadge} px-2 py-1 rounded-full flex-shrink-0">${statusText}</span>
+                </div>
+                <p class="text-sm text-gray-500 mb-1"><i class="fa fa-calendar mr-1 text-gray-400"></i>${fecha} ${act.hora}</p>
+                <p class="text-sm text-gray-500 mb-2"><i class="fa fa-map-marker mr-1 text-gray-400"></i>${act.lugar}</p>
+                <div class="mb-3">
+                    <div class="flex justify-between text-xs text-gray-400 mb-1">
+                        <span>${act.participantes.length} participantes</span>
+                        <span>Máx. ${act.maxParticipantes}</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-1.5">
+                        <div class="bg-primary h-1.5 rounded-full" style="width:${pct}%"></div>
+                    </div>
+                </div>
+                <div class="flex gap-2">
+                    ${!yaUnido && !lleno ? `
+                        <button class="btn btn-primary text-sm flex-1 btn-unirse">
+                            <i class="fa fa-plus mr-1"></i> Unirse
+                        </button>
+                    ` : yaUnido ? `
+                        <button class="btn btn-secondary text-sm flex-1 btn-salir">
+                            <i class="fa fa-check mr-1"></i> Unido — Salir
+                        </button>
+                    ` : `
+                        <button class="btn text-sm flex-1 bg-gray-200 text-gray-400" disabled>Lleno</button>
+                    `}
+                    <button class="btn btn-secondary text-sm btn-compartir px-3">
+                        <i class="fa fa-share-alt"></i>
+                    </button>
+                </div>
+            `;
+
+            item.querySelector('.btn-unirse')?.addEventListener('click', () => this.unirseActividad(act.id));
+            item.querySelector('.btn-salir')?.addEventListener('click',  () => this.salirActividad(act.id));
+            item.querySelector('.btn-compartir')?.addEventListener('click', () => this.compartirActividad(act));
+            cont.appendChild(item);
+        });
     },
-    
-    createActivity() {
-        this.showNotification('Create activity feature coming in a future update');
+
+    unirseActividad(id) {
+        const act = this.actividades.find(a => a.id === id);
+        if (!act || act.participantes.includes(this.currentUser.id)) return;
+        act.participantes.push(this.currentUser.id);
+        this.renderActividades();
+        alert(`¡Te uniste a "${act.titulo}"!`);
     },
-    
-    calculateDistance(lat1, lon1, lat2, lon2) {
-        const R = 6371; // Earth radius in km
-        const dLat = this.toRad(lat2 - lat1);
-        const dLon = this.toRad(lon2 - lon1);
-        const a = 
-            Math.sin(dLat/2) * Math.sin(dLat/2) +
-            Math.cos(this.toRad(lat1)) * Math.cos(this.toRad(lat2)) * 
-            Math.sin(dLon/2) * Math.sin(dLon/2);
-        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+    salirActividad(id) {
+        const act = this.actividades.find(a => a.id === id);
+        if (!act) return;
+        if (!confirm(`¿Salir de "${act.titulo}"?`)) return;
+        act.participantes = act.participantes.filter(p => p !== this.currentUser.id);
+        this.renderActividades();
     },
-    
-    toRad(degrees) {
-        return degrees * (Math.PI / 180);
+
+    compartirActividad(act) {
+        const texto = `¡Únete a "${act.titulo}" el ${act.fecha} en ${act.lugar}! — PzKayak Connect`;
+        if (navigator.share) {
+            navigator.share({ title: act.titulo, text: texto });
+        } else {
+            navigator.clipboard?.writeText(texto).then(() => alert('Enlace copiado al portapapeles'));
+        }
     },
-    
-    showNotification(message, type = 'success') {
-        alert(message);
+
+    mostrarFormActividad() {
+        // Crear modal simple
+        const overlay = document.createElement('div');
+        overlay.id = 'activity-modal';
+        overlay.className = 'fixed inset-0 bg-black bg-opacity-50 z-50 flex items-end justify-center';
+        overlay.innerHTML = `
+            <div class="bg-white rounded-t-2xl p-5 w-full max-w-lg">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-semibold">Crear Actividad</h2>
+                    <button id="modal-close" class="text-gray-400 hover:text-gray-600"><i class="fa fa-times text-xl"></i></button>
+                </div>
+                <div class="space-y-3">
+                    <input id="act-titulo" type="text" class="input-field" placeholder="Nombre de la actividad">
+                    <input id="act-lugar" type="text" class="input-field" placeholder="Lugar">
+                    <div class="grid grid-cols-2 gap-3">
+                        <input id="act-fecha" type="date" class="input-field">
+                        <input id="act-hora"  type="time" class="input-field" value="08:00">
+                    </div>
+                    <input id="act-max" type="number" class="input-field" placeholder="Máx. participantes" value="10" min="2" max="50">
+                    <button id="modal-guardar" class="btn btn-primary w-full">
+                        <i class="fa fa-check mr-1"></i> Crear Actividad
+                    </button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+
+        document.getElementById('modal-close').onclick   = () => overlay.remove();
+        overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+        document.getElementById('modal-guardar').onclick = () => {
+            const titulo = document.getElementById('act-titulo').value.trim();
+            const lugar  = document.getElementById('act-lugar').value.trim();
+            const fecha  = document.getElementById('act-fecha').value;
+            const hora   = document.getElementById('act-hora').value;
+            const max    = parseInt(document.getElementById('act-max').value) || 10;
+
+            if (!titulo || !lugar || !fecha) { alert('Completa todos los campos'); return; }
+
+            this.actividades.unshift({
+                id: 'act_' + Date.now(),
+                titulo, lugar, fecha, hora,
+                participantes: [this.currentUser.id],
+                maxParticipantes: max,
+                estado: 'upcoming'
+            });
+            overlay.remove();
+            this.renderActividades();
+            alert(`¡Actividad "${titulo}" creada!`);
+        };
+    },
+
+    // ── ACTUALIZAR ────────────────────────────────────────────────────────────
+
+    refreshLocations() {
+        const btn = document.getElementById('community-refresh-btn');
+        if (btn) { btn.innerHTML = '<i class="fa fa-spinner fa-spin mr-1"></i>'; btn.disabled = true; }
+
+        setTimeout(() => {
+            this.amigos.forEach(a => {
+                a.distancia = Math.max(0.1, Math.round((a.distancia + (Math.random() - 0.5) * 0.5) * 10) / 10);
+            });
+            this.render();
+            if (btn) { btn.innerHTML = '<i class="fa fa-refresh mr-1"></i> Actualizar'; btn.disabled = false; }
+        }, 800);
     }
 };
 

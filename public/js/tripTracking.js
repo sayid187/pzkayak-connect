@@ -26,10 +26,10 @@ const tripTracking = {
     currentLat: null,
     currentLng: null,
 
-    init() {
+    async init() {
         this.setupEventListeners();
         this.setupMap();
-        this.loadSavedTrips();
+        await this.loadSavedTrips();
     },
 
     setupEventListeners() {
@@ -229,42 +229,61 @@ const tripTracking = {
         }
     },
 
-    saveTrip() {
+    async saveTrip() {
         if (this.tripData.coordinates.length === 0) return;
-        const viaje = { ...this.tripData, id: 'viaje_' + Date.now(), date: new Date().toISOString().split('T')[0] };
         try {
-            const guardados = JSON.parse(localStorage.getItem('pzkayak_trips') || '[]');
-            guardados.push(viaje);
-            localStorage.setItem('pzkayak_trips', JSON.stringify(guardados));
-            this.updateTripList(guardados);
+            const { data: { session } } = await db.auth.getSession();
+            if (!session) { this.showNotification('Sesión expirada', 'error'); return; }
+
+            const { error } = await db.from('viajes').insert({
+                user_id:       session.user.id,
+                nombre:        `Viaje ${new Date().toLocaleDateString('es')}`,
+                distancia:     parseFloat(this.tripData.distance.toFixed(3)),
+                duracion:      this.tripData.duration,
+                velocidad_max: parseFloat(this.tripData.speed.toFixed(2)),
+                velocidad_prom: this.tripData.duration > 0
+                    ? parseFloat((this.tripData.distance / (this.tripData.duration / 3600)).toFixed(2)) : 0,
+                puntos:        this.tripData.coordinates,
+                inicio:        this.tripData.startTime?.toISOString(),
+                fin:           new Date().toISOString()
+            });
+            if (error) throw error;
+            await this.loadSavedTrips();
+            this.showNotification('Viaje guardado');
         } catch (e) {
             this.showNotification('Error al guardar el viaje', 'error');
         }
     },
 
-    loadSavedTrips() {
+    async loadSavedTrips() {
         try {
-            const guardados = JSON.parse(localStorage.getItem('pzkayak_trips') || '[]');
-            this.updateTripList(guardados);
-        } catch (e) {}
+            const { data: { session } } = await db.auth.getSession();
+            if (!session) return;
+            const { data } = await db
+                .from('viajes')
+                .select('*')
+                .eq('user_id', session.user.id)
+                .order('created_at', { ascending: false })
+                .limit(20);
+            this.updateTripList(data || []);
+        } catch (e) { console.error('Error cargando viajes:', e); }
     },
 
     updateTripList(viajes) {
-        viajes.sort((a, b) => new Date(b.date) - new Date(a.date));
         const contenedor = document.querySelector('#trip-page .space-y-3');
         if (!contenedor) return;
         contenedor.innerHTML = '';
         const recientes = viajes.slice(0, 5);
         recientes.forEach(viaje => {
-            const fecha = new Date(viaje.date).toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
-            const dur   = this.formatDuration(viaje.duration);
+            const fecha = new Date(viaje.inicio || viaje.created_at).toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
+            const dur   = this.formatDuration(viaje.duracion || viaje.duration || 0);
             const item  = document.createElement('div');
             item.className = 'flex items-center p-2 bg-gray-50 rounded-lg';
             item.innerHTML = `
                 <div class="bg-blue-100 p-2 rounded-full mr-3"><i class="fa fa-calendar text-primary"></i></div>
                 <div class="flex-1">
                     <p class="font-medium">${fecha}</p>
-                    <p class="text-sm text-gray-600">${viaje.distance.toFixed(1)} km | ${dur}</p>
+                    <p class="text-sm text-gray-600">${(viaje.distancia || viaje.distance || 0).toFixed(1)} km | ${dur}</p>
                 </div>
                 <button class="text-primary"><i class="fa fa-chevron-right"></i></button>`;
             item.querySelector('button').addEventListener('click', () => this.showTripDetail(viaje));

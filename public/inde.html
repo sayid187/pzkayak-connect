@@ -7,8 +7,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     
     <script>
         tailwind.config = {
@@ -122,8 +120,18 @@
         }
         
         /* Estilos de Mapas */
-        #map, #trip-map, #catch-map, #community-map {
-            @apply w-full h-full rounded-xl overflow-hidden;
+        #main-map, #trip-map, #catch-map, #community-map {
+            width: 100%;
+            height: 220px;
+            border-radius: 0.75rem;
+            overflow: hidden;
+            border: none;
+        }
+        #main-map iframe, #trip-map iframe, #catch-map iframe, #community-map iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            border-radius: 0.75rem;
         }
         
         /* Animación de carga */
@@ -143,7 +151,7 @@
                 <div class="flex items-center space-x-4">
                     <button id="notification-btn" class="relative p-2 text-gray-600 hover:text-primary">
                         <i class="fa fa-bell-o text-xl"></i>
-                        <span class="absolute top-1 right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">3</span>
+                        <span id="notif-badge" class="absolute top-1 right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">3</span>
                     </button>
          <button id="settings-btn" onclick="document.querySelector('.nav-item[data-page=\'profile-page\']').click()" class="p-2 text-gray-600 hover:text-primary transition-colors">
     <i class="fa fa-cog text-xl"></i>
@@ -405,44 +413,55 @@
                         <form id="catch-form" class="space-y-3">
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Especie</label>
-                                <select class="input-field">
+                                <select name="species" class="input-field">
                                     <option value="">Seleccionar Especie</option>
-                                    <option value="bass">Lubina</option>
-                                    <option value="salmon">Salmón</option>
-                                    <option value="trout">Trucha</option>
-                                    <option value="tuna">Atún</option>
-                                    <option value="other">Otro</option>
+                                    <option value="Lubina">Lubina</option>
+                                    <option value="Salmón">Salmón</option>
+                                    <option value="Trucha">Trucha</option>
+                                    <option value="Atún">Atún</option>
+                                    <option value="Dorado">Dorado</option>
+                                    <option value="Pargo">Pargo</option>
+                                    <option value="Mero">Mero</option>
+                                    <option value="Otro">Otro</option>
                                 </select>
                             </div>
                             <div class="grid grid-cols-2 gap-3">
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Longitud (cm)</label>
-                                    <input type="number" class="input-field" placeholder="Ej. 45">
+                                    <input type="number" name="length" class="input-field" placeholder="Ej. 45" min="0" step="0.1">
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Peso (kg)</label>
-                                    <input type="number" class="input-field" placeholder="Ej. 2.5">
+                                    <input type="number" name="weight" class="input-field" placeholder="Ej. 2.5" min="0" step="0.1">
                                 </div>
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Cebo / Señuelo</label>
-                                <input type="text" class="input-field" placeholder="Tipo de cebo">
+                                <input type="text" name="bait" class="input-field" placeholder="Tipo de cebo">
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Profundidad (m)</label>
-                                <input type="number" class="input-field" placeholder="Ej. 10">
+                                <input type="number" name="depth" class="input-field" placeholder="Ej. 10" min="0">
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Foto</label>
-                                <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+                                <div id="photo-upload-area" class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:border-primary transition-colors">
                                     <i class="fa fa-camera text-gray-400 text-3xl mb-2"></i>
-                                    <p class="text-sm text-gray-600">Haz clic para subir una foto</p>
-                                    <input type="file" class="hidden" accept="image/*">
+                                    <p class="text-sm text-gray-600">Toca aquí para subir una foto</p>
+                                    <input type="file" name="photo" id="catch-photo-input" class="hidden" accept="image/*">
                                 </div>
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Notas</label>
-                                <textarea class="input-field" rows="3" placeholder="Añadir notas"></textarea>
+                                <textarea name="notes" class="input-field" rows="3" placeholder="Añadir notas..."></textarea>
+                            </div>
+                            <div id="catch-location-display" class="hidden text-xs text-green-600 flex items-center">
+                                <i class="fa fa-map-marker mr-1"></i>
+                                <span id="catch-location-text">Ubicación registrada</span>
+                            </div>
+                            <div class="hidden text-xs text-green-600 flex items-center gap-1">
+                                <i class="fa fa-map-marker"></i>
+                                <span id="catch-location-text">Ubicación registrada</span>
                             </div>
                             <button type="submit" class="btn btn-primary w-full">
                                 <i class="fa fa-save mr-1"></i> Guardar Captura
@@ -458,7 +477,7 @@
                                 <button class="tab" data-filter="recent">Reciente</button>
                             </div>
                         </div>
-                        <div class="space-y-3">
+                        <div id="catch-list" class="space-y-3">
                             <div class="flex items-center p-2 bg-gray-50 rounded-lg">
                                 <div class="w-16 h-16 bg-gray-200 rounded-lg overflow-hidden mr-3">
                                     <img src="https://p3-doubao-search-sign.byteimg.com/labis/c403867a19a382ff22c33b684c1e6de7~tplv-be4g95zd3a-image.jpeg?lk3s=feb11e32&x-expires=1787846628&x-signature=AgVImSRWkxz5ECEHI9gRQwuuxL4%3D" alt="Foto de captura" class="w-full h-full object-cover">
@@ -492,79 +511,46 @@
             
             <section id="community-page" class="page">
                 <div class="mb-4">
+
+                    <!-- Mapa de amigos -->
                     <div class="card mb-4">
                         <div class="h-64">
                             <div id="community-map"></div>
                         </div>
                         <div class="p-4 bg-gray-50">
-                            <div class="flex items-center justify-between mb-2">
+                            <div class="flex items-center justify-between mb-1">
                                 <h2 class="text-lg font-semibold">Ubicaciones de Amigos</h2>
-                                <button class="text-primary text-sm flex items-center">
+                                <button id="community-refresh-btn" class="text-primary text-sm flex items-center">
                                     <i class="fa fa-refresh mr-1"></i> Actualizar
                                 </button>
                             </div>
-                            <p class="text-sm text-gray-600">3 amigos en línea</p>
+                            <p id="community-online-count" class="text-sm text-gray-600">Cargando...</p>
                         </div>
                     </div>
-                    
+
+                    <!-- Lista de Amigos -->
                     <div class="card p-4 mb-4">
                         <h2 class="text-lg font-semibold mb-3">Lista de Amigos</h2>
-                        <div class="space-y-3">
-                            <div class="flex items-center p-2 bg-gray-50 rounded-lg">
-                                <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mr-3">
-                                    <span class="font-bold text-primary">C</span>
-                                </div>
-                                <div class="flex-1">
-                                    <p class="font-medium">Carlos</p>
-                                    <p class="text-sm text-gray-600">En línea · A 2.5 km</p>
-                                </div>
-                                <div class="flex space-x-2">
-                                    <button class="text-primary"><i class="fa fa-map-marker"></i></button>
-                                    <button class="text-primary"><i class="fa fa-comment"></i></button>
-                                </div>
-                            </div>
-                            <div class="flex items-center p-2 bg-gray-50 rounded-lg">
-                                <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center mr-3">
-                                    <span class="font-bold text-secondary">M</span>
-                                </div>
-                                <div class="flex-1">
-                                    <p class="font-medium">Miguel</p>
-                                    <p class="text-sm text-gray-600">En línea · A 5.8 km</p>
-                                </div>
-                                <div class="flex space-x-2">
-                                    <button class="text-primary"><i class="fa fa-map-marker"></i></button>
-                                    <button class="text-primary"><i class="fa fa-comment"></i></button>
-                                </div>
-                            </div>
-                        </div>
+                        <div id="friend-list" class="space-y-2"></div>
                     </div>
-                    
+
+                    <!-- Pescadores Cercanos -->
+                    <div class="card p-4 mb-4">
+                        <h2 class="text-lg font-semibold mb-3">Pescadores Cercanos</h2>
+                        <div id="nearby-list" class="space-y-2"></div>
+                    </div>
+
+                    <!-- Actividades de Grupo -->
                     <div class="card p-4 mb-4">
                         <div class="flex items-center justify-between mb-3">
                             <h2 class="text-lg font-semibold">Actividades de Grupo</h2>
-                            <button class="btn btn-primary text-sm">
+                            <button id="create-activity-btn" class="btn btn-primary text-sm">
                                 <i class="fa fa-plus mr-1"></i> Crear
                             </button>
                         </div>
-                        <div class="space-y-3">
-                            <div class="p-3 bg-gray-50 rounded-lg">
-                                <div class="flex items-center justify-between mb-2">
-                                    <h3 class="font-medium">Pesca de Fin de Semana</h3>
-                                    <span class="text-xs bg-blue-100 text-primary px-2 py-1 rounded-full">En curso</span>
-                                </div>
-                                <p class="text-sm text-gray-600 mb-2">Fecha: 26 de Julio, 2025 08:00</p>
-                                <p class="text-sm text-gray-600 mb-2">Lugar: Zona costera central</p>
-                                <div class="flex items-center justify-between">
-                                    <div class="flex -space-x-2">
-                                        <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center border-2 border-white"><span class="text-xs font-bold text-primary">C</span></div>
-                                        <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center border-2 border-white"><span class="text-xs font-bold text-secondary">M</span></div>
-                                        <div class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center border-2 border-white"><span class="text-xs font-bold text-gray-600">+2</span></div>
-                                    </div>
-                                    <button class="btn btn-secondary text-sm">Unirse</button>
-                                </div>
-                            </div>
-                        </div>
+                        <div id="activity-list" class="space-y-2"></div>
                     </div>
+
                 </div>
             </section>
             
@@ -642,47 +628,38 @@
             
             <section id="regulations-page" class="page">
                 <div class="mb-4">
+
+                    <!-- Selector de zona -->
                     <div class="card p-4 mb-4">
                         <div class="flex items-center justify-between mb-3">
-                            <h2 class="text-lg font-semibold">Región</h2>
-                            <div class="relative">
-                                <select class="input-field pr-8 appearance-none">
-                                    <option value="zona-centro">Zona Centro (Chile)</option>
-                                    <option value="zona-norte">Zona Norte</option>
-                                    <option value="zona-sur">Zona Sur</option>
-                                </select>
-                                <i class="fa fa-chevron-down absolute right-3 top-3 text-gray-500 pointer-events-none"></i>
-                            </div>
+                            <h2 class="text-lg font-semibold">Reglamentos de Pesca</h2>
                         </div>
-                        <div class="relative">
-                            <input type="text" class="input-field pl-10" placeholder="Buscar reglamentos...">
-                            <i class="fa fa-search absolute left-3 top-3 text-gray-500"></i>
+                        <div class="flex gap-2 mb-3">
+                            <button class="zona-btn flex-1 py-2 rounded-xl text-sm font-medium border-2 border-primary bg-blue-50 text-primary" data-zona="norte">Norte</button>
+                            <button class="zona-btn flex-1 py-2 rounded-xl text-sm font-medium border-2 border-gray-200 text-gray-500" data-zona="centro">Centro</button>
+                            <button class="zona-btn flex-1 py-2 rounded-xl text-sm font-medium border-2 border-gray-200 text-gray-500" data-zona="sur">Sur</button>
                         </div>
+                        <input id="reglamento-search" type="text" class="input-field" placeholder="Buscar reglamento...">
                     </div>
-                    
+
+                    <!-- Contenido dinámico -->
+                    <div id="regulations-content"></div>
+
+                    <!-- Mi Licencia -->
                     <div class="card p-4 mb-4">
-                        <h2 class="text-lg font-semibold mb-3">Licencia de Pesca</h2>
-                        <div class="bg-blue-50 p-3 rounded-lg mb-3">
-                            <div class="flex items-center mb-2">
-                                <i class="fa fa-info-circle text-primary mr-2"></i>
-                                <h3 class="font-medium">Requisitos</h3>
-                            </div>
-                            <p class="text-sm text-gray-700 mb-2">Se requiere licencia de pesca recreativa vigente emitida por Sernapesca.</p>
+                        <div class="flex items-center justify-between mb-3">
+                            <h2 class="text-lg font-semibold">Mi Licencia Sernapesca</h2>
+                            <a href="https://pescarecreativa.sernapesca.cl" target="_blank" class="text-primary text-xs flex items-center gap-1">
+                                <i class="fa fa-external-link"></i> Obtener
+                            </a>
                         </div>
-                        <div class="bg-green-50 p-3 rounded-lg">
-                            <div class="flex items-center mb-2">
-                                <i class="fa fa-check-circle text-secondary mr-2"></i>
-                                <h3 class="font-medium">Mi Licencia</h3>
-                            </div>
-                            <div class="flex items-center justify-between">
-                                <div>
-                                    <p class="font-medium">Licencia #2025-12345</p>
-                                    <p class="text-sm text-gray-600">Válido hasta: 31 de Julio, 2026</p>
-                                </div>
-                                <button class="text-primary"><i class="fa fa-eye"></i></button>
-                            </div>
-                        </div>
+                        <div id="licencia-display"></div>
+                        <button id="cargar-licencia-btn" class="btn btn-primary w-full mt-3">
+                            <i class="fa fa-upload mr-1"></i> Cargar foto de licencia
+                        </button>
+                        <input type="file" id="licencia-foto-input" accept="image/*" class="hidden">
                     </div>
+
                 </div>
             </section>
             
@@ -802,8 +779,8 @@
             <div class="container mx-auto max-w-md">
                 <div class="flex justify-around">
                     <button class="nav-item active" data-page="dashboard-page"><i class="fa fa-home"></i><span>Inicio</span></button>
-                    <button class="nav-item" data-page="trip-page"><i class="fa fa-route"></i><span>Viaje</span></button>
-                    <button class="nav-item" data-page="catch-page"><i class="fa fa-fish"></i><span>Captura</span></button>
+                    <button class="nav-item" data-page="trip-page"><i class="fa fa-flag"></i><span>Viaje</span></button>
+                    <button class="nav-item" data-page="catch-page"><i class="fa fa-trophy"></i><span>Captura</span></button>
                     <button class="nav-item" data-page="community-page"><i class="fa fa-users"></i><span>Comunidad</span></button>
                     <button class="nav-item" data-page="safety-page"><i class="fa fa-shield"></i><span>Seguridad</span></button>
                     <button class="nav-item" data-page="regulations-page"><i class="fa fa-gavel"></i><span>Leyes</span></button>
@@ -885,6 +862,8 @@
     <script src="js/catchLog.js"></script>
     <script src="js/communityModule.js"></script>
     <script src="js/safetyModule.js"></script>
+    <script src="js/legalModule.js"></script>
+    <script src="js/profileModule.js"></script>
     <script src="js/app.js"></script>
     <script>
         // Elementos del DOM
@@ -920,7 +899,12 @@
         });
         
         // Control de Notificaciones
-        if(notificationBtn) notificationBtn.addEventListener('click', () => notificationModal.classList.remove('hidden'));
+        if(notificationBtn) notificationBtn.addEventListener('click', () => {
+            notificationModal.classList.remove('hidden');
+            // Limpiar badge al abrir
+            const badge = document.getElementById('notif-badge');
+            if (badge) badge.classList.add('hidden');
+        });
         if(closeNotificationModal) closeNotificationModal.addEventListener('click', () => notificationModal.classList.add('hidden'));
         
         // Control de SOS
@@ -1143,42 +1127,32 @@
                 });
             }
             
-            // Inicializar mapas (coordenadas de ejemplo actualizadas para zona costera)
-            if(typeof L !== 'undefined') {
-                const defaultCenter = [-33.0456, -71.6200]; // Valparaíso, Chile
-                
-                if(document.getElementById('map')) {
-                    const map = L.map('map').setView(defaultCenter, 13);
-                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-                    L.marker(defaultCenter).addTo(map);
-                }
-                
-                if(document.getElementById('trip-map')) {
-                    const tripMap = L.map('trip-map').setView(defaultCenter, 13);
-                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(tripMap);
-                }
-                
-                if(document.getElementById('catch-map')) {
-                    const catchMap = L.map('catch-map').setView(defaultCenter, 13);
-                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(catchMap);
-                }
-                
-                if(document.getElementById('community-map')) {
-                    const communityMap = L.map('community-map').setView(defaultCenter, 13);
-                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(communityMap);
-                }
+            // Inicializar mapas con Google Maps embed
+            function initGoogleMap(containerId, lat, lng, zoom) {
+                const container = document.getElementById(containerId);
+                if (!container || container.querySelector('iframe')) return;
+                const src = `https://maps.google.com/maps?q=${lat},${lng}&z=${zoom}&output=embed&hl=es`;
+                container.innerHTML = `<iframe src="${src}" allowfullscreen loading="lazy"></iframe>`;
+            }
+
+            function initMapsWithLocation(lat, lng) {
+                initGoogleMap('main-map', lat, lng, 14);
+                initGoogleMap('trip-map', lat, lng, 13);
+                initGoogleMap('catch-map', lat, lng, 13);
+            }
+
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => initMapsWithLocation(pos.coords.latitude, pos.coords.longitude),
+                    ()    => initMapsWithLocation(10.4806, -66.9036)
+                );
+            } else {
+                initMapsWithLocation(10.4806, -66.9036);
             }
         });
         
         // Formulario de Captura
-        const catchForm = document.getElementById('catch-form');
-        if (catchForm) {
-            catchForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                alert('¡Registro de captura guardado correctamente!');
-                catchForm.reset();
-            });
-        }
+        // El formulario de capturas es manejado por catchLog.js
         
         // Pestañas Genéricas
         const tabs = document.querySelectorAll('.tab:not([data-tide])');
@@ -1260,50 +1234,168 @@
         }
 
      // 3. Conexión Real del Login
+        // ── AUTH & JWT ────────────────────────────────────────────────────────────
+        const AUTH_KEY      = 'pzkayak_token';
+        const USER_KEY      = 'pzkayak_usuario';
+        const INACTIVITY_MS = 10 * 60 * 1000; // 10 minutos
+        let inactivityTimer = null;
+
+        function entrarApp(token, usuario) {
+            localStorage.setItem(AUTH_KEY, token);
+            localStorage.setItem(USER_KEY, JSON.stringify(usuario));
+
+            // Mostrar nombre en perfil si profileModule ya existe
+            if (typeof profileModule !== 'undefined' && profileModule.perfil) {
+                profileModule.perfil.nombre = usuario.nombre;
+                profileModule.perfil.email  = usuario.email;
+            }
+
+            document.getElementById('auth-page').classList.remove('active');
+            document.getElementById('dashboard-page').classList.add('active');
+            document.querySelector('.nav-item[data-page="dashboard-page"]').classList.add('active');
+            document.getElementById('app-header').classList.remove('hidden');
+            document.getElementById('app-nav').classList.remove('hidden');
+
+            iniciarTemporizadorInactividad();
+        }
+
+        function cerrarSesion(motivo = '') {
+            localStorage.removeItem(AUTH_KEY);
+            localStorage.removeItem(USER_KEY);
+            clearTimeout(inactivityTimer);
+
+            // Ocultar app, mostrar login
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById('auth-page').classList.add('active');
+            document.getElementById('app-header').classList.add('hidden');
+            document.getElementById('app-nav').classList.add('hidden');
+
+            if (motivo) {
+                const banner = document.createElement('div');
+                banner.className = 'fixed top-4 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-sm px-4 py-2 rounded-xl z-50 shadow-lg';
+                banner.textContent = motivo;
+                document.body.appendChild(banner);
+                setTimeout(() => banner.remove(), 3500);
+            }
+        }
+
+        function iniciarTemporizadorInactividad() {
+            clearTimeout(inactivityTimer);
+            inactivityTimer = setTimeout(() => {
+                cerrarSesion('Sesión cerrada por inactividad (10 min)');
+            }, INACTIVITY_MS);
+        }
+
+        function resetearInactividad() {
+            if (localStorage.getItem(AUTH_KEY)) {
+                iniciarTemporizadorInactividad();
+            }
+        }
+
+        // Resetear timer con cualquier interacción
+        ['click', 'touchstart', 'keydown', 'scroll', 'mousemove'].forEach(evento => {
+            document.addEventListener(evento, resetearInactividad, { passive: true });
+        });
+
+        // ── VERIFICAR SESIÓN AL CARGAR ────────────────────────────────────────
+        async function verificarSesionGuardada() {
+            const token   = localStorage.getItem(AUTH_KEY);
+            const usuario = localStorage.getItem(USER_KEY);
+
+            if (!token || !usuario) return; // No hay sesión guardada
+
+            try {
+                const res = await fetch('/api/usuarios/verificar', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (res.ok) {
+                    entrarApp(token, JSON.parse(usuario));
+                } else {
+                    localStorage.removeItem(AUTH_KEY);
+                    localStorage.removeItem(USER_KEY);
+                }
+            } catch {
+                // Sin conexión — confiar en el token guardado localmente
+                entrarApp(token, JSON.parse(usuario));
+            }
+        }
+
+        verificarSesionGuardada();
+
+        // ── LOGIN FORM ────────────────────────────────────────────────────────
         if (loginForm) {
             loginForm.addEventListener('submit', async (e) => {
-                e.preventDefault(); // Evitamos que la página se recargue
-
-                const email = document.getElementById('login-email').value;
+                e.preventDefault();
+                const email    = document.getElementById('login-email').value.trim();
                 const password = document.getElementById('login-password').value;
+                const submitBtn = loginForm.querySelector('button[type="submit"]');
+
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Entrando...';
 
                 try {
-                    // Hacemos la petición a nuestra nueva ruta de login
                     const response = await fetch('/api/usuarios/login', {
                         method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
+                        headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ email, password })
                     });
 
                     const data = await response.json();
 
-              if (response.ok) {
-                        // ¡Login exitoso! 
-                        alert('¡Bienvenido a PzKayak Connect!');
-                        
-                        // 1. Ocultamos el login y mostramos el inicio
-                        document.getElementById('auth-page').classList.remove('active');
-                        document.getElementById('dashboard-page').classList.add('active');
-                        document.querySelector('.nav-item[data-page="dashboard-page"]').classList.add('active');
-                        
-                        // 2. AHORA SÍ, mostramos las barras de navegación
-                        document.getElementById('app-header').classList.remove('hidden');
-                        document.getElementById('app-nav').classList.remove('hidden');
-                        
-                        // 3. Limpiamos los campos por seguridad
+                    if (response.ok) {
                         loginForm.reset();
+                        entrarApp(data.token, data.usuario);
                     } else {
-                        // Mostramos el error exacto que nos devolvió el servidor (correo o contraseña incorrectos)
                         alert('Error: ' + data.mensaje);
                     }
                 } catch (error) {
-                    console.error('Error al iniciar sesión:', error);
                     alert('Problema de conexión con el servidor.');
+                } finally {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Entrar';
                 }
             });
         }
+
+        // ── REGISTRO FORM ─────────────────────────────────────────────────────
+        const registerForm = document.getElementById('register-form');
+        if (registerForm) {
+            registerForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const nombre   = document.getElementById('reg-nombre')?.value.trim();
+                const email    = document.getElementById('reg-email')?.value.trim();
+                const password = document.getElementById('reg-password')?.value;
+                const submitBtn = registerForm.querySelector('button[type="submit"]');
+
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Creando cuenta...';
+
+                try {
+                    const response = await fetch('/api/usuarios/registro', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ nombre, email, password })
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        registerForm.reset();
+                        entrarApp(data.token, data.usuario);
+                    } else {
+                        alert('Error: ' + data.mensaje);
+                    }
+                } catch (error) {
+                    alert('Problema de conexión con el servidor.');
+                } finally {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Crear Cuenta';
+                }
+            });
+        }
+
+        // Cerrar sesión desde perfil
+        window.cerrarSesionApp = () => cerrarSesion();
         
     </script>
 </body>

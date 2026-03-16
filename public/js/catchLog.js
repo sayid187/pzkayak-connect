@@ -1,5 +1,5 @@
 /**
- * Módulo de Registro de Capturas
+ * Módulo de Registro de Capturas — Supabase
  */
 
 const catchLog = {
@@ -8,8 +8,8 @@ const catchLog = {
     currentLat: null,
     currentLng: null,
 
-    init() {
-        this.loadCatches();
+    async init() {
+        await this.loadCatches();
         this.setupMap();
         this.setupForm();
         this.setupEventListeners();
@@ -45,7 +45,6 @@ const catchLog = {
     setLocation(lat, lng) {
         this.currentLat = lat;
         this.currentLng = lng;
-
         const container = document.getElementById('catch-map');
         if (container) {
             container.innerHTML = `<iframe
@@ -54,8 +53,6 @@ const catchLog = {
                 allowfullscreen loading="lazy">
             </iframe>`;
         }
-
-        // Mostrar indicador de ubicación en el formulario
         const display = document.getElementById('catch-location-display');
         const text    = document.getElementById('catch-location-text');
         if (display) display.classList.remove('hidden');
@@ -67,12 +64,7 @@ const catchLog = {
     setupForm() {
         this.form = document.getElementById('catch-form');
         if (!this.form) return;
-
-        this.form.addEventListener('submit', (e) => {
-            e.preventDefault();
-            this.saveCatch();
-        });
-
+        this.form.addEventListener('submit', (e) => { e.preventDefault(); this.saveCatch(); });
         this.setupPhotoUpload();
     },
 
@@ -80,26 +72,16 @@ const catchLog = {
         const area  = document.getElementById('photo-upload-area');
         const input = document.getElementById('catch-photo-input');
         if (!area || !input) return;
-
-        area.addEventListener('click', (e) => {
-            if (!e.target.closest('.remove-photo')) input.click();
-        });
-
+        area.addEventListener('click', (e) => { if (!e.target.closest('.remove-photo')) input.click(); });
         input.addEventListener('change', (e) => {
-            if (e.target.files && e.target.files[0]) {
-                this.previewImage(e.target.files[0]);
-            }
+            if (e.target.files?.[0]) this.previewImage(e.target.files[0]);
         });
     },
 
     previewImage(file) {
-        if (!file.type.match('image.*')) {
-            alert('Por favor selecciona un archivo de imagen');
-            return;
-        }
+        if (!file.type.match('image.*')) { alert('Selecciona un archivo de imagen'); return; }
         const area = document.getElementById('photo-upload-area');
         if (!area) return;
-
         const reader = new FileReader();
         reader.onload = (e) => {
             area.innerHTML = `
@@ -126,25 +108,16 @@ const catchLog = {
         this.setupPhotoUpload();
     },
 
-    // ── EVENTOS ───────────────────────────────────────────────────────────────
-
     setupEventListeners() {
-        // Botón Añadir Marcador — usa GPS real
         const addMarkerBtn = document.querySelector('#catch-page .text-primary.text-sm');
         if (addMarkerBtn) {
             addMarkerBtn.addEventListener('click', () => {
-                if (navigator.geolocation) {
-                    navigator.geolocation.getCurrentPosition(
-                        (pos) => {
-                            this.setLocation(pos.coords.latitude, pos.coords.longitude);
-                        },
-                        () => alert('No se pudo obtener tu ubicación')
-                    );
-                }
+                navigator.geolocation?.getCurrentPosition(
+                    (pos) => this.setLocation(pos.coords.latitude, pos.coords.longitude),
+                    () => alert('No se pudo obtener tu ubicación')
+                );
             });
         }
-
-        // Filtros
         const filterTabs = document.querySelectorAll('#catch-page .tab[data-filter]');
         filterTabs.forEach(tab => {
             tab.addEventListener('click', () => {
@@ -157,7 +130,7 @@ const catchLog = {
 
     // ── GUARDAR ───────────────────────────────────────────────────────────────
 
-    saveCatch() {
+    async saveCatch() {
         if (!this.form) return;
 
         const especie  = this.form.querySelector('[name="species"]')?.value;
@@ -167,88 +140,133 @@ const catchLog = {
         const prof     = this.form.querySelector('[name="depth"]')?.value || '';
         const notas    = this.form.querySelector('[name="notes"]')?.value || '';
 
-        if (!especie) { alert('Por favor selecciona la especie'); return; }
+        if (!especie)  { alert('Por favor selecciona la especie'); return; }
         if (!longitud) { alert('Por favor ingresa la longitud'); return; }
         if (!peso)     { alert('Por favor ingresa el peso'); return; }
-
-        const lat = this.currentLat;
-        const lng = this.currentLng;
-        if (!lat || !lng) {
-            alert('Pulsa "Añadir Marcador" para registrar la ubicación de la captura');
+        if (!this.currentLat || !this.currentLng) {
+            alert('Pulsa "Añadir Marcador" para registrar la ubicación');
             return;
         }
 
-        const catchData = {
-            id: 'captura_' + Date.now(),
-            especie, longitud, peso, cebo, prof, notas,
-            latitud: lat, longitud_coord: lng,
-            timestamp: Date.now(),
-            imagen: null
-        };
+        const btn = this.form.querySelector('button[type="submit"]');
+        if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa fa-spinner fa-spin mr-1"></i> Guardando...'; }
 
-        // Procesar imagen
-        const input    = document.getElementById('catch-photo-input');
-        const preview  = document.querySelector('#photo-upload-area img');
-
-        if (input && input.files && input.files[0]) {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                catchData.imagen = e.target.result;
-                this.finalizeSave(catchData);
-            };
-            reader.readAsDataURL(input.files[0]);
-        } else {
-            if (preview) catchData.imagen = preview.src;
-            this.finalizeSave(catchData);
-        }
-    },
-
-    finalizeSave(catchData) {
-        // Si es edición, reemplazar
-        const editId = this.form.dataset.editId;
-        if (editId) {
-            this.catches = this.catches.map(c => c.id === editId ? { ...catchData, id: editId } : c);
-            delete this.form.dataset.editId;
-        } else {
-            this.catches.push(catchData);
-        }
-
-        localStorage.setItem('pzkayak_catches', JSON.stringify(this.catches));
-        this.form.reset();
-        this.resetPhotoUpload();
-
-        const display = document.getElementById('catch-location-display');
-        if (display) display.classList.add('hidden');
-
-        const submitBtn = this.form.querySelector('button[type="submit"]');
-        if (submitBtn) submitBtn.innerHTML = '<i class="fa fa-save mr-1"></i> Guardar Captura';
-
-        this.updateCatchList();
-        alert('¡Captura guardada correctamente!');
-    },
-
-    loadCatches() {
         try {
-            this.catches = JSON.parse(localStorage.getItem('pzkayak_catches') || '[]');
-        } catch { this.catches = []; }
+            // Subir foto si hay
+            let foto_url = null;
+            const input   = document.getElementById('catch-photo-input');
+            const preview = document.querySelector('#photo-upload-area img');
+
+            if (input?.files?.[0]) {
+                foto_url = await this.subirFoto(input.files[0]);
+            } else if (preview?.src?.startsWith('data:')) {
+                foto_url = await this.subirFotoBase64(preview.src);
+            }
+
+            const { data: { session } } = await db.auth.getSession();
+            if (!session) { alert('Tu sesión expiró, inicia sesión nuevamente'); return; }
+
+            const catchData = {
+                user_id:    session.user.id,
+                especie,
+                longitud:   parseFloat(longitud),
+                peso:       parseFloat(peso),
+                cebo,
+                profundidad: prof ? parseFloat(prof) : null,
+                notas,
+                foto_url,
+                lat:  this.currentLat,
+                lng:  this.currentLng,
+                fecha: new Date().toISOString()
+            };
+
+            const editId = this.form.dataset.editId;
+            let error;
+
+            if (editId) {
+                ({ error } = await db.from('capturas').update(catchData).eq('id', editId));
+                if (!error) delete this.form.dataset.editId;
+            } else {
+                ({ error } = await db.from('capturas').insert(catchData));
+            }
+
+            if (error) throw error;
+
+            this.form.reset();
+            this.resetPhotoUpload();
+            document.getElementById('catch-location-display')?.classList.add('hidden');
+            if (btn) btn.innerHTML = '<i class="fa fa-save mr-1"></i> Guardar Captura';
+
+            await this.loadCatches();
+            this.updateCatchList();
+            alert('¡Captura guardada!');
+
+        } catch (err) {
+            console.error(err);
+            alert('Error al guardar: ' + err.message);
+        } finally {
+            if (btn) btn.disabled = false;
+        }
+    },
+
+    async subirFoto(file) {
+        const reader = new FileReader();
+        const base64 = await new Promise(res => {
+            reader.onload = e => res(e.target.result);
+            reader.readAsDataURL(file);
+        });
+        return this.subirFotoBase64(base64, file.name);
+    },
+
+    async subirFotoBase64(base64, fileName = 'foto.jpg') {
+        try {
+            const res  = await fetch('/api/capturas/foto', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${(await db.auth.getSession()).data.session?.access_token}` },
+                body: JSON.stringify({ base64, fileName })
+            });
+            const data = await res.json();
+            return data.url || null;
+        } catch { return null; }
+    },
+
+    // ── CARGAR DESDE SUPABASE ─────────────────────────────────────────────────
+
+    async loadCatches() {
+        try {
+            const { data: { session } } = await db.auth.getSession();
+            if (!session) { this.catches = []; return; }
+
+            const { data, error } = await db
+                .from('capturas')
+                .select('*')
+                .eq('user_id', session.user.id)
+                .order('fecha', { ascending: false });
+
+            if (error) throw error;
+            this.catches = data || [];
+        } catch (err) {
+            console.error('Error cargando capturas:', err);
+            this.catches = [];
+        }
     },
 
     // ── LISTA ─────────────────────────────────────────────────────────────────
 
     updateCatchList() {
-        this.renderList([...this.catches].sort((a, b) => b.timestamp - a.timestamp));
+        this.renderList(this.catches);
     },
 
     filterCatches(filtro) {
         let lista = [...this.catches];
         if (filtro === 'recent') {
-            const hace7dias = Date.now() - 7 * 24 * 60 * 60 * 1000;
-            lista = lista.filter(c => c.timestamp >= hace7dias);
+            const hace7dias = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+            lista = lista.filter(c => c.fecha >= hace7dias);
         }
-        this.renderList(lista.sort((a, b) => b.timestamp - a.timestamp), filtro);
+        this.renderList(lista);
     },
 
-    renderList(capturas, filtro = 'all') {
+    renderList(capturas) {
         const contenedor = document.getElementById('catch-list');
         if (!contenedor) return;
         contenedor.innerHTML = '';
@@ -256,21 +274,22 @@ const catchLog = {
         if (capturas.length === 0) {
             contenedor.innerHTML = `<div class="text-center py-6 text-gray-500">
                 <i class="fa fa-fish text-3xl mb-2 block text-gray-300"></i>
-                ${filtro === 'recent' ? 'Sin capturas en los últimos 7 días' : 'Sin capturas registradas aún'}
+                Sin capturas registradas aún
             </div>`;
             return;
         }
 
         capturas.forEach(c => {
-            const fecha = new Date(c.timestamp).toLocaleDateString('es-ES');
-            const hora  = new Date(c.timestamp).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+            const fecha = new Date(c.fecha).toLocaleDateString('es-ES');
+            const hora  = new Date(c.fecha).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+            const img   = c.foto_url;
 
             const item = document.createElement('div');
             item.className = 'flex items-center p-3 bg-gray-50 rounded-lg gap-3';
             item.innerHTML = `
                 <div class="w-16 h-16 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
-                    ${c.imagen
-                        ? `<img src="${c.imagen}" alt="${c.especie}" class="w-full h-full object-cover">`
+                    ${img
+                        ? `<img src="${img}" alt="${c.especie}" class="w-full h-full object-cover">`
                         : `<div class="w-full h-full flex items-center justify-center"><i class="fa fa-fish text-gray-400 text-2xl"></i></div>`
                     }
                 </div>
@@ -294,29 +313,22 @@ const catchLog = {
         });
     },
 
-    // ── EDITAR / ELIMINAR ─────────────────────────────────────────────────────
-
     editCatch(id) {
         const c = this.catches.find(x => x.id === id);
         if (!c || !this.form) return;
-
         this.form.querySelector('[name="species"]').value = c.especie;
         this.form.querySelector('[name="length"]').value  = c.longitud;
         this.form.querySelector('[name="weight"]').value  = c.peso;
         this.form.querySelector('[name="bait"]').value    = c.cebo || '';
-        this.form.querySelector('[name="depth"]').value   = c.prof || '';
+        this.form.querySelector('[name="depth"]').value   = c.profundidad || '';
         this.form.querySelector('[name="notes"]').value   = c.notas || '';
-
-        if (c.latitud && c.longitud_coord) {
-            this.setLocation(c.latitud, c.longitud_coord);
-        }
-
-        if (c.imagen) {
+        if (c.lat && c.lng) this.setLocation(c.lat, c.lng);
+        if (c.foto_url) {
             const area = document.getElementById('photo-upload-area');
             if (area) {
                 area.innerHTML = `
                     <div class="relative">
-                        <img src="${c.imagen}" alt="${c.especie}" class="w-full h-40 object-cover rounded-lg">
+                        <img src="${c.foto_url}" alt="${c.especie}" class="w-full h-40 object-cover rounded-lg">
                         <button type="button" class="remove-photo absolute top-2 right-2 bg-white rounded-full w-7 h-7 flex items-center justify-center shadow-md">
                             <i class="fa fa-times text-gray-600"></i>
                         </button>
@@ -325,20 +337,18 @@ const catchLog = {
                 area.querySelector('.remove-photo').addEventListener('click', () => this.resetPhotoUpload());
             }
         }
-
         this.form.dataset.editId = id;
-        const submitBtn = this.form.querySelector('button[type="submit"]');
-        if (submitBtn) submitBtn.innerHTML = '<i class="fa fa-save mr-1"></i> Actualizar Captura';
-
+        const btn = this.form.querySelector('button[type="submit"]');
+        if (btn) btn.innerHTML = '<i class="fa fa-save mr-1"></i> Actualizar Captura';
         this.form.scrollIntoView({ behavior: 'smooth' });
     },
 
-    deleteCatch(id) {
-        if (confirm('¿Eliminar esta captura?')) {
-            this.catches = this.catches.filter(c => c.id !== id);
-            localStorage.setItem('pzkayak_catches', JSON.stringify(this.catches));
-            this.updateCatchList();
-        }
+    async deleteCatch(id) {
+        if (!confirm('¿Eliminar esta captura?')) return;
+        const { error } = await db.from('capturas').delete().eq('id', id);
+        if (error) { alert('Error al eliminar: ' + error.message); return; }
+        this.catches = this.catches.filter(c => c.id !== id);
+        this.updateCatchList();
     }
 };
 

@@ -1,605 +1,372 @@
 /**
- * 安全工具模块
- * 负责SOS紧急求助、紧急联系人管理、安全装备检查和紧急信息发送
+ * Módulo de Seguridad - PzKayak Connect
  */
 
 const safetyModule = {
-    // 紧急联系人
-    emergencyContacts: [
-        {
-            id: 'contact_001',
-            name: '张先生',
-            relationship: '亲属',
-            phone: '138-0000-0000'
-        },
-        {
-            id: 'contact_002',
-            name: '李先生',
-            relationship: '朋友',
-            phone: '139-0000-0000'
-        }
+
+    contactos: [
+        { id: 'c_001', nombre: 'Familiar',  relacion: 'Familia', telefono: '+58 412 000 0000' },
+        { id: 'c_002', nombre: 'Amigo',     relacion: 'Amigo',   telefono: '+58 414 000 0001' }
     ],
-    
-    // 安全装备清单
-    safetyEquipment: [
-        { id: 'eq_001', name: '救生衣', checked: false },
-        { id: 'eq_002', name: '哨子', checked: false },
-        { id: 'eq_003', name: '锚', checked: false },
-        { id: 'eq_004', name: '桨', checked: false },
-        { id: 'eq_005', name: '急救包', checked: false },
-        { id: 'eq_006', name: '手电筒', checked: false },
-        { id: 'eq_007', name: '对讲机/收音机', checked: false },
-        { id: 'eq_008', name: '饮用水', checked: false }
+
+    equipo: [
+        { id: 'eq_001', nombre: 'Chaleco Salvavidas',            checked: false, icon: 'fa-life-ring' },
+        { id: 'eq_002', nombre: 'Silbato',                       checked: false, icon: 'fa-bullhorn' },
+        { id: 'eq_003', nombre: 'Ancla',                         checked: false, icon: 'fa-anchor' },
+        { id: 'eq_004', nombre: 'Remo extra',                    checked: false, icon: 'fa-arrows-v' },
+        { id: 'eq_005', nombre: 'Botiquín de Primeros Auxilios', checked: false, icon: 'fa-medkit' },
+        { id: 'eq_006', nombre: 'Linterna',                      checked: false, icon: 'fa-lightbulb-o' },
+        { id: 'eq_007', nombre: 'Radio / Walkie-talkie',         checked: false, icon: 'fa-volume-up' },
+        { id: 'eq_008', nombre: 'Agua Potable',                  checked: false, icon: 'fa-tint' },
+        { id: 'eq_009', nombre: 'Teléfono cargado',              checked: false, icon: 'fa-mobile' },
+        { id: 'eq_010', nombre: 'Protector solar',               checked: false, icon: 'fa-sun-o' }
     ],
-    
-    // 当前位置
-    currentLocation: {
-        latitude: 36.0671,
-        longitude: 120.3826,
-        accuracy: null,
-        timestamp: null
-    },
-    
-    /**
-     * 初始化安全工具模块
-     */
-    init() {
-        this.loadSavedData();
+
+    ubicacionActual: { lat: null, lng: null },
+    sosActivo: false,
+
+    async init() {
+        await this.cargarDatos();
         this.setupEventListeners();
-        this.updateEmergencyContacts();
-        this.updateSafetyEquipment();
-        this.updateCurrentLocation();
+        this.renderContactos();
+        this.renderEquipo();
+        this.actualizarUbicacion();
     },
-    
-    /**
-     * 加载保存的数据
-     */
-    loadSavedData() {
+
+    // ── PERSISTENCIA ──────────────────────────────────────────────────────────
+
+    async cargarDatos() {
+        // Equipo stays in localStorage (device-specific)
         try {
-            // 加载紧急联系人
-            const savedContacts = localStorage.getItem('pzkayak_emergency_contacts');
-            if (savedContacts) {
-                this.emergencyContacts = JSON.parse(savedContacts);
-            }
-            
-            // 加载安全装备检查状态
-            const savedEquipment = localStorage.getItem('pzkayak_safety_equipment');
-            if (savedEquipment) {
-                this.safetyEquipment = JSON.parse(savedEquipment);
-            }
-        } catch (error) {
-            console.error('加载安全数据失败:', error);
-        }
-    },
-    
-    /**
-     * 保存数据
-     */
-    saveData() {
+            const e = localStorage.getItem('pzkayak_equipo_seguridad');
+            if (e) this.equipo = JSON.parse(e);
+        } catch {}
         try {
-            localStorage.setItem('pzkayak_emergency_contacts', JSON.stringify(this.emergencyContacts));
-            localStorage.setItem('pzkayak_safety_equipment', JSON.stringify(this.safetyEquipment));
-            return true;
-        } catch (error) {
-            console.error('保存安全数据失败:', error);
-            this.showNotification('保存数据失败', 'error');
-            return false;
+            const { data: { session } } = await db.auth.getSession();
+            if (!session) return;
+            const { data } = await db
+                .from('contactos_emergencia')
+                .select('*')
+                .eq('user_id', session.user.id)
+                .order('created_at');
+            if (data && data.length > 0) this.contactos = data;
+        } catch (err) { console.error('Error cargando contactos:', err); }
+    },
+
+
+    guardarEquipo() {
+        localStorage.setItem('pzkayak_equipo_seguridad', JSON.stringify(this.equipo));
+    },
+
+    async guardarContacto(contacto) {
+        const { data: { session } } = await db.auth.getSession();
+        if (!session) return null;
+        if (contacto.id && !contacto.id.startsWith('c_')) {
+            // Update existing Supabase record
+            const { data, error } = await db.from('contactos_emergencia')
+                .update({ nombre: contacto.nombre, relacion: contacto.relacion, telefono: contacto.telefono })
+                .eq('id', contacto.id).select().single();
+            if (error) throw error;
+            return data;
+        } else {
+            // Insert new
+            const { data, error } = await db.from('contactos_emergencia')
+                .insert({ user_id: session.user.id, nombre: contacto.nombre, relacion: contacto.relacion, telefono: contacto.telefono })
+                .select().single();
+            if (error) throw error;
+            return data;
         }
     },
-    
-    /**
-     * 设置事件监听器
-     */
-    setupEventListeners() {
-        // SOS按钮
-        const sosBtn = document.getElementById('sos-btn');
-        if (sosBtn) {
-            sosBtn.addEventListener('click', () => {
-                this.showSosConfirmation();
-            });
-        }
-        
-        // SOS确认按钮
-        const confirmSos = document.getElementById('confirm-sos');
-        if (confirmSos) {
-            confirmSos.addEventListener('click', () => {
-                this.sendSos();
-            });
-        }
-        
-        // SOS取消按钮
-        const cancelSos = document.getElementById('cancel-sos');
-        if (cancelSos) {
-            cancelSos.addEventListener('click', () => {
-                this.hideSosConfirmation();
-            });
-        }
-        
-        // 紧急呼叫按钮
-        const emergencyCallBtn = document.querySelector('#safety-page .btn.btn-danger');
-        if (emergencyCallBtn) {
-            emergencyCallBtn.addEventListener('click', () => {
-                this.makeEmergencyCall();
-            });
-        }
-        
-        // 添加联系人按钮
-        const addContactBtn = document.querySelector('#safety-page .btn.btn-primary.w-full');
-        if (addContactBtn) {
-            addContactBtn.addEventListener('click', () => {
-                this.addEmergencyContact();
-            });
-        }
-        
-        // 完成检查按钮
-        const completeCheckBtn = document.querySelector('#safety-page .btn.btn-primary.w-full:nth-of-type(2)');
-        if (completeCheckBtn) {
-            completeCheckBtn.addEventListener('click', () => {
-                this.completeSafetyCheck();
-            });
-        }
-        
-        // 发送紧急信息按钮
-        const sendEmergencyInfoBtn = document.querySelector('#safety-page .btn.btn-primary.w-full:nth-of-type(3)');
-        if (sendEmergencyInfoBtn) {
-            sendEmergencyInfoBtn.addEventListener('click', () => {
-                this.sendEmergencyInfo();
-            });
-        }
-        
-        // 装备复选框
-        this.setupEquipmentCheckboxes();
+
+    async eliminarContactoDb(id) {
+        if (!id || id.startsWith('c_')) return;
+        await db.from('contactos_emergencia').delete().eq('id', id);
     },
-    
-    /**
-     * 设置装备复选框事件
-     */
-    setupEquipmentCheckboxes() {
-        const checkboxes = document.querySelectorAll('#safety-page input[type="checkbox"]');
-        checkboxes.forEach((checkbox, index) => {
-            // 设置初始状态
-            if (this.safetyEquipment[index]) {
-                checkbox.checked = this.safetyEquipment[index].checked;
-            }
-            
-            // 添加变更事件
-            checkbox.addEventListener('change', () => {
-                if (this.safetyEquipment[index]) {
-                    this.safetyEquipment[index].checked = checkbox.checked;
-                    this.saveData();
-                }
-            });
+
+    // ── UBICACIÓN ─────────────────────────────────────────────────────────────
+
+    actualizarUbicacion() {
+        if (!navigator.geolocation) return;
+        navigator.geolocation.getCurrentPosition(pos => {
+            this.ubicacionActual.lat = pos.coords.latitude;
+            this.ubicacionActual.lng = pos.coords.longitude;
         });
     },
-    
-    /**
-     * 更新紧急联系人列表
-     */
-    updateEmergencyContacts() {
-        // 获取联系人列表容器
-        const contactListContainer = document.querySelector('#safety-page .space-y-3');
-        if (!contactListContainer) return;
-        
-        // 清空现有列表
-        contactListContainer.innerHTML = '';
-        
-        // 添加联系人项
-        this.emergencyContacts.forEach(contact => {
-            const contactItem = document.createElement('div');
-            contactItem.className = 'flex items-center p-2 bg-gray-50 rounded-lg';
-            contactItem.innerHTML = `
-                <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mr-3">
-                    <span class="font-bold text-primary">${contact.name.charAt(0)}</span>
+
+    updateCurrentLocation() {
+        this.actualizarUbicacion();
+    },
+
+    // ── SOS ───────────────────────────────────────────────────────────────────
+
+    setupEventListeners() {
+        document.getElementById('sos-btn')
+            ?.addEventListener('click', () => this.confirmarSOS());
+
+        document.querySelector('#safety-page .btn-danger')
+            ?.addEventListener('click', () => this.llamadaEmergencia());
+    },
+
+    confirmarSOS() {
+        if (this.sosActivo) {
+            if (confirm('¿Cancelar la alerta SOS?')) this.cancelarSOS();
+            return;
+        }
+
+        const modal = document.createElement('div');
+        modal.className = 'fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4';
+        modal.innerHTML = `
+            <div class="bg-white rounded-2xl p-6 w-full max-w-sm text-center">
+                <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fa fa-exclamation-triangle text-danger text-3xl"></i>
                 </div>
-                <div class="flex-1">
-                    <p class="font-medium">${contact.name} (${contact.relationship})</p>
-                    <p class="text-sm text-gray-600">${contact.phone}</p>
+                <h2 class="text-xl font-bold text-danger mb-2">Activar SOS</h2>
+                <p class="text-gray-600 mb-2">Se enviará tu ubicación a tus contactos de emergencia.</p>
+                ${this.ubicacionActual.lat
+                    ? `<p class="text-xs text-gray-400 mb-4">
+                        <i class="fa fa-map-marker mr-1"></i>
+                        ${this.ubicacionActual.lat.toFixed(5)}, ${this.ubicacionActual.lng.toFixed(5)}
+                       </p>`
+                    : `<p class="text-xs text-orange-500 mb-4">⚠️ Ubicación no disponible</p>`
+                }
+                <div class="flex gap-3">
+                    <button id="sos-cancelar" class="btn btn-secondary flex-1">Cancelar</button>
+                    <button id="sos-confirmar" class="btn btn-danger flex-1">¡Activar SOS!</button>
                 </div>
-                <div class="flex space-x-2">
-                    <button class="text-primary edit-contact" data-id="${contact.id}">
+            </div>
+        `;
+        document.body.appendChild(modal);
+
+        document.getElementById('sos-cancelar').onclick  = () => modal.remove();
+        document.getElementById('sos-confirmar').onclick = () => {
+            modal.remove();
+            this.activarSOS();
+        };
+    },
+
+    activarSOS() {
+        this.sosActivo = true;
+        const btn = document.getElementById('sos-btn');
+        if (btn) {
+            btn.classList.add('animate-pulse');
+            btn.innerHTML = '<i class="fa fa-times text-white text-3xl"></i>';
+        }
+
+        // Notificación visible
+        const banner = document.createElement('div');
+        banner.id = 'sos-banner';
+        banner.className = 'fixed top-0 left-0 right-0 bg-danger text-white text-center py-2 z-50 text-sm font-bold';
+        banner.innerHTML = '<i class="fa fa-exclamation-triangle mr-1"></i> SOS ACTIVO — Toca el botón rojo para cancelar';
+        document.body.prepend(banner);
+
+        // Simular envío a contactos
+        const nombres = this.contactos.map(c => c.nombre).join(', ');
+        setTimeout(() => {
+            alert(`✅ Alerta SOS enviada a: ${nombres}\n\nUbicación: ${
+                this.ubicacionActual.lat
+                    ? `${this.ubicacionActual.lat.toFixed(5)}, ${this.ubicacionActual.lng.toFixed(5)}`
+                    : 'No disponible'
+            }`);
+        }, 500);
+    },
+
+    cancelarSOS() {
+        this.sosActivo = false;
+        const btn = document.getElementById('sos-btn');
+        if (btn) {
+            btn.classList.remove('animate-pulse');
+            btn.innerHTML = '<i class="fa fa-exclamation-triangle text-white text-4xl"></i>';
+        }
+        document.getElementById('sos-banner')?.remove();
+    },
+
+    llamadaEmergencia() {
+        const opciones = `
+¿A quién llamar?
+
+1. Guardia Costera: 137
+2. Emergencias: 133
+3. ${this.contactos[0]?.nombre || 'Contacto'}: ${this.contactos[0]?.telefono || 'No configurado'}
+        `.trim();
+        alert(opciones);
+    },
+
+    // ── CONTACTOS ─────────────────────────────────────────────────────────────
+
+    renderContactos() {
+        const cont = document.querySelector('#safety-page .card:nth-child(2) .space-y-3');
+        if (!cont) return;
+
+        // Renderizar solo los items de contacto, mantener el botón Añadir
+        const btnAnadir = cont.querySelector('.btn-primary');
+        cont.innerHTML = '';
+
+        this.contactos.forEach(c => {
+            const item = document.createElement('div');
+            item.className = 'flex items-center p-2 bg-gray-50 rounded-lg';
+            item.innerHTML = `
+                <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mr-3 flex-shrink-0">
+                    <span class="font-bold text-primary">${c.nombre.charAt(0).toUpperCase()}</span>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <p class="font-medium">${c.nombre}</p>
+                    <p class="text-sm text-gray-500">${c.relacion} · ${c.telefono}</p>
+                </div>
+                <div class="flex gap-2">
+                    <button class="text-primary p-1 btn-llamar" title="Llamar">
+                        <i class="fa fa-phone"></i>
+                    </button>
+                    <button class="text-primary p-1 btn-editar" title="Editar">
                         <i class="fa fa-pencil"></i>
                     </button>
-                    <button class="text-danger delete-contact" data-id="${contact.id}">
+                    <button class="text-danger p-1 btn-eliminar" title="Eliminar">
                         <i class="fa fa-trash"></i>
                     </button>
                 </div>
             `;
-            
-            // 添加编辑事件
-            contactItem.querySelector('.edit-contact').addEventListener('click', () => {
-                this.editEmergencyContact(contact.id);
-            });
-            
-            // 添加删除事件
-            contactItem.querySelector('.delete-contact').addEventListener('click', () => {
-                this.deleteEmergencyContact(contact.id);
-            });
-            
-            contactListContainer.appendChild(contactItem);
+            item.querySelector('.btn-llamar').onclick   = () => alert(`Llamando a ${c.nombre}: ${c.telefono}`);
+            item.querySelector('.btn-editar').onclick   = () => this.editarContacto(c.id);
+            item.querySelector('.btn-eliminar').onclick = () => this.eliminarContacto(c.id);
+            cont.appendChild(item);
         });
-        
-        // 添加添加联系人按钮
-        const addButton = document.createElement('button');
-        addButton.className = 'btn btn-primary w-full';
-        addButton.innerHTML = '<i class="fa fa-plus mr-1"></i> 添加联系人';
-        addButton.addEventListener('click', () => {
-            this.addEmergencyContact();
-        });
-        contactListContainer.appendChild(addButton);
+
+        // Botón añadir
+        const btn = document.createElement('button');
+        btn.className = 'btn btn-primary w-full';
+        btn.innerHTML = '<i class="fa fa-plus mr-1"></i> Añadir Contacto';
+        btn.onclick = () => this.mostrarFormContacto();
+        cont.appendChild(btn);
     },
-    
-    /**
-     * 更新安全装备列表
-     */
-    updateSafetyEquipment() {
-        // 获取装备列表容器
-        const equipmentListContainer = document.querySelector('#safety-page .space-y-3:nth-child(2)');
-        if (!equipmentListContainer) return;
-        
-        // 清空现有列表
-        equipmentListContainer.innerHTML = '';
-        
-        // 添加装备项
-        this.safetyEquipment.forEach(equipment => {
-            const equipmentItem = document.createElement('div');
-            equipmentItem.className = 'flex items-center';
-            equipmentItem.innerHTML = `
-                <input type="checkbox" id="${equipment.id}" class="w-5 h-5 text-primary rounded focus:ring-primary" ${equipment.checked ? 'checked' : ''}>
-                <label for="${equipment.id}" class="ml-2 text-gray-700">${equipment.name}</label>
-            `;
-            
-            // 添加变更事件
-            const checkbox = equipmentItem.querySelector('input[type="checkbox"]');
-            checkbox.addEventListener('change', () => {
-                equipment.checked = checkbox.checked;
-                this.saveData();
-            });
-            
-            equipmentListContainer.appendChild(equipmentItem);
-        });
-        
-        // 添加完成检查按钮
-        const completeButton = document.createElement('button');
-        completeButton.className = 'btn btn-primary w-full mt-3';
-        completeButton.innerHTML = '<i class="fa fa-check-circle mr-1"></i> 完成检查';
-        completeButton.addEventListener('click', () => {
-            this.completeSafetyCheck();
-        });
-        equipmentListContainer.appendChild(completeButton);
-    },
-    
-    /**
-     * 更新当前位置
-     */
-    updateCurrentLocation() {
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-                position => {
-                    this.currentLocation = {
-                        latitude: position.coords.latitude,
-                        longitude: position.coords.longitude,
-                        accuracy: position.coords.accuracy,
-                        timestamp: position.timestamp
-                    };
-                    
-                    this.updateLocationDisplay();
-                },
-                error => {
-                    console.error('获取位置失败:', error);
-                    this.showNotification('无法获取您的位置，使用默认位置', 'warning');
-                    this.updateLocationDisplay();
+
+    mostrarFormContacto(contacto = null) {
+        const esEdicion = !!contacto;
+        const modal = document.createElement('div');
+        modal.className = 'fixed inset-0 bg-black bg-opacity-50 z-50 flex items-end justify-center';
+        modal.innerHTML = `
+            <div class="bg-white rounded-t-2xl p-5 w-full max-w-lg">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-semibold">${esEdicion ? 'Editar' : 'Añadir'} Contacto</h2>
+                    <button id="modal-close" class="text-gray-400"><i class="fa fa-times text-xl"></i></button>
+                </div>
+                <div class="space-y-3">
+                    <input id="c-nombre"   type="text" class="input-field" placeholder="Nombre" value="${contacto?.nombre || ''}">
+                    <input id="c-relacion" type="text" class="input-field" placeholder="Relación (ej: Familia, Amigo)" value="${contacto?.relacion || ''}">
+                    <input id="c-telefono" type="tel"  class="input-field" placeholder="Teléfono" value="${contacto?.telefono || ''}">
+                    <button id="modal-guardar" class="btn btn-primary w-full">
+                        <i class="fa fa-save mr-1"></i> ${esEdicion ? 'Actualizar' : 'Guardar'}
+                    </button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+
+        document.getElementById('modal-close').onclick = () => modal.remove();
+        modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+
+        document.getElementById('modal-guardar').onclick = async () => {
+            const nombre   = document.getElementById('c-nombre').value.trim();
+            const relacion = document.getElementById('c-relacion').value.trim();
+            const telefono = document.getElementById('c-telefono').value.trim();
+            if (!nombre || !telefono) { alert('Nombre y teléfono son obligatorios'); return; }
+
+            try {
+                if (esEdicion) {
+                    const updated = await this.guardarContacto({ id: contacto.id, nombre, relacion, telefono });
+                    const idx = this.contactos.findIndex(x => x.id === contacto.id);
+                    if (idx !== -1 && updated) this.contactos[idx] = updated;
+                } else {
+                    const nuevo = await this.guardarContacto({ nombre, relacion, telefono });
+                    if (nuevo) this.contactos.push(nuevo);
                 }
-            );
-        } else {
-            this.showNotification('您的浏览器不支持地理位置功能', 'warning');
-            this.updateLocationDisplay();
-        }
-    },
-    
-    /**
-     * 更新位置显示
-     */
-    updateLocationDisplay() {
-        const locationElement = document.querySelector('#safety-page .bg-gray-50 p.font-medium');
-        if (locationElement) {
-            locationElement.textContent = `北纬 ${this.currentLocation.latitude.toFixed(4)}°，东经 ${this.currentLocation.longitude.toFixed(4)}°`;
-        }
-        
-        // 更新紧急信息预览
-        const infoPreviewElement = document.querySelector('#safety-page .bg-gray-50 p.text-sm');
-        if (infoPreviewElement) {
-            infoPreviewElement.textContent = `我需要紧急救援，当前位置：北纬 ${this.currentLocation.latitude.toFixed(4)}°，东经 ${this.currentLocation.longitude.toFixed(4)}°。请尽快联系我。`;
-        }
-    },
-    
-    /**
-     * 显示SOS确认对话框
-     */
-    showSosConfirmation() {
-        const sosModal = document.getElementById('sos-modal');
-        if (sosModal) {
-            sosModal.classList.remove('hidden');
-        }
-    },
-    
-    /**
-     * 隐藏SOS确认对话框
-     */
-    hideSosConfirmation() {
-        const sosModal = document.getElementById('sos-modal');
-        if (sosModal) {
-            sosModal.classList.add('hidden');
-        }
-    },
-    
-    /**
-     * 发送SOS紧急求助
-     */
-    sendSos() {
-        // 隐藏确认对话框
-        this.hideSosConfirmation();
-        
-        // 显示发送中提示
-        this.showNotification('正在发送紧急求助信息...');
-        
-        // 模拟发送延迟
-        setTimeout(() => {
-            // 实际应用中，这里应该调用API发送紧急求助信息
-            // 例如发送短信、推送通知等
-            
-            // 显示发送成功提示
-            this.showNotification('紧急求助信息已发送！');
-            
-            // 记录SOS事件
-            this.logSosEvent();
-        }, 2000);
-    },
-    
-    /**
-     * 拨打紧急电话
-     */
-    makeEmergencyCall() {
-        // 实际应用中，这里应该调用设备的电话功能
-        // 例如 window.location.href = 'tel:120';
-        
-        this.showNotification('正在拨打紧急电话...');
-        
-        // 模拟拨打电话
-        setTimeout(() => {
-            this.showNotification('紧急电话已接通');
-        }, 1000);
-    },
-    
-    /**
-     * 添加紧急联系人
-     */
-    addEmergencyContact() {
-        // 实际应用中，这里应该显示一个表单让用户填写联系人信息
-        // 为了演示，我们使用prompt获取信息
-        
-        const name = prompt('请输入联系人姓名:');
-        if (!name) return;
-        
-        const relationship = prompt('请输入与联系人的关系:');
-        if (!relationship) return;
-        
-        const phone = prompt('请输入联系人电话:');
-        if (!phone) return;
-        
-        // 创建新联系人
-        const newContact = {
-            id: 'contact_' + Date.now(),
-            name: name,
-            relationship: relationship,
-            phone: phone
+                this.renderContactos();
+                modal.remove();
+            } catch (err) { alert('Error al guardar: ' + err.message); }
         };
-        
-        // 添加到联系人列表
-        this.emergencyContacts.push(newContact);
-        
-        // 保存数据
-        if (this.saveData()) {
-            // 更新列表
-            this.updateEmergencyContacts();
-            
-            // 显示成功提示
-            this.showNotification('联系人已添加');
-        }
     },
-    
-    /**
-     * 编辑紧急联系人
-     * @param {string} id - 联系人ID
-     */
-    editEmergencyContact(id) {
-        const contact = this.emergencyContacts.find(c => c.id === id);
-        if (!contact) return;
-        
-        // 实际应用中，这里应该显示一个表单让用户编辑联系人信息
-        // 为了演示，我们使用prompt获取信息
-        
-        const name = prompt('请输入联系人姓名:', contact.name);
-        if (name !== null) contact.name = name;
-        
-        const relationship = prompt('请输入与联系人的关系:', contact.relationship);
-        if (relationship !== null) contact.relationship = relationship;
-        
-        const phone = prompt('请输入联系人电话:', contact.phone);
-        if (phone !== null) contact.phone = phone;
-        
-        // 保存数据
-        if (this.saveData()) {
-            // 更新列表
-            this.updateEmergencyContacts();
-            
-            // 显示成功提示
-            this.showNotification('联系人已更新');
-        }
+
+    editarContacto(id) {
+        const c = this.contactos.find(x => x.id === id);
+        if (c) this.mostrarFormContacto(c);
     },
-    
-    /**
-     * 删除紧急联系人
-     * @param {string} id - 联系人ID
-     */
-    deleteEmergencyContact(id) {
-        if (confirm('确定要删除这个联系人吗？')) {
-            // 从列表中移除
-            this.emergencyContacts = this.emergencyContacts.filter(c => c.id !== id);
-            
-            // 保存数据
-            if (this.saveData()) {
-                // 更新列表
-                this.updateEmergencyContacts();
-                
-                // 显示成功提示
-                this.showNotification('联系人已删除');
+
+    async eliminarContacto(id) {
+        const c = this.contactos.find(x => x.id === id);
+        if (!c) return;
+        if (!confirm(`¿Eliminar a ${c.nombre} de tus contactos de emergencia?`)) return;
+        this.contactos = this.contactos.filter(x => x.id !== id);
+        await this.eliminarContactoDb(id);
+        this.renderContactos();
+    },
+
+    // ── EQUIPO ────────────────────────────────────────────────────────────────
+
+    renderEquipo() {
+        const cont = document.querySelector('#safety-page .card:nth-child(3) .space-y-3');
+        if (!cont) return;
+        cont.innerHTML = '';
+
+        this.equipo.forEach(item => {
+            const div = document.createElement('div');
+            div.className = 'flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 transition-colors';
+            div.innerHTML = `
+                <input type="checkbox" id="${item.id}" class="w-5 h-5 text-primary rounded focus:ring-primary cursor-pointer" ${item.checked ? 'checked' : ''}>
+                <label for="${item.id}" class="flex-1 flex items-center gap-2 cursor-pointer ${item.checked ? 'line-through text-gray-400' : 'text-gray-700'}">
+                    <i class="fa ${item.icon} text-gray-400 w-4 text-center"></i>
+                    ${item.nombre}
+                </label>
+                ${item.checked ? '<i class="fa fa-check-circle text-green-500"></i>' : ''}
+            `;
+
+            const checkbox = div.querySelector('input');
+            checkbox.onchange = () => {
+                item.checked = checkbox.checked;
+                this.guardarEquipo();
+                this.renderEquipo();
+                this.actualizarBarraEquipo();
+            };
+            cont.appendChild(div);
+        });
+
+        // Barra de progreso
+        const total    = this.equipo.length;
+        const listos   = this.equipo.filter(e => e.checked).length;
+        const pct      = Math.round(listos / total * 100);
+        const colorBar = pct === 100 ? 'bg-green-500' : pct >= 60 ? 'bg-yellow-400' : 'bg-red-400';
+
+        const barra = document.createElement('div');
+        barra.id = 'equipo-progress';
+        barra.className = 'mt-2';
+        barra.innerHTML = `
+            <div class="flex justify-between text-xs text-gray-500 mb-1">
+                <span>${listos} de ${total} elementos listos</span>
+                <span>${pct}%</span>
+            </div>
+            <div class="w-full bg-gray-200 rounded-full h-2">
+                <div class="${colorBar} h-2 rounded-full transition-all" style="width:${pct}%"></div>
+            </div>
+        `;
+        cont.appendChild(barra);
+
+        // Botón completar
+        const btn = document.createElement('button');
+        btn.className = `btn w-full mt-2 ${pct === 100 ? 'btn-secondary' : 'btn-primary'}`;
+        btn.innerHTML = pct === 100
+            ? '<i class="fa fa-check-circle mr-1"></i> ¡Todo listo para salir!'
+            : `<i class="fa fa-check-circle mr-1"></i> Completar Verificación (${listos}/${total})`;
+        btn.onclick = () => {
+            if (pct < 100) {
+                const faltantes = this.equipo.filter(e => !e.checked).map(e => `• ${e.nombre}`).join('\n');
+                alert(`Aún faltan estos elementos:\n\n${faltantes}`);
+            } else {
+                alert('✅ ¡Equipo completo! Estás listo para salir a pescar.');
             }
-        }
-    },
-    
-    /**
-     * 完成安全检查
-     */
-    completeSafetyCheck() {
-        // 检查是否所有装备都已勾选
-        const allChecked = this.safetyEquipment.every(eq => eq.checked);
-        
-        if (!allChecked) {
-            // 找出未勾选的装备
-            const uncheckedItems = this.safetyEquipment
-                .filter(eq => !eq.checked)
-                .map(eq => eq.name)
-                .join('、');
-            
-            this.showNotification(`请确认以下装备：${uncheckedItems}`, 'warning');
-            return;
-        }
-        
-        // 保存检查记录
-        const checkRecord = {
-            timestamp: new Date().getTime(),
-            equipment: [...this.safetyEquipment]
         };
-        
-        try {
-            // 获取现有记录
-            const savedRecords = JSON.parse(localStorage.getItem('pzkayak_safety_checks') || '[]');
-            
-            // 添加新记录
-            savedRecords.push(checkRecord);
-            
-            // 只保留最近10条记录
-            if (savedRecords.length > 10) {
-                savedRecords.shift();
-            }
-            
-            // 保存记录
-            localStorage.setItem('pzkayak_safety_checks', JSON.stringify(savedRecords));
-            
-            // 显示成功提示
-            this.showNotification('安全检查已完成');
-        } catch (error) {
-            console.error('保存安全检查记录失败:', error);
-            this.showNotification('保存安全检查记录失败', 'error');
-        }
+        cont.appendChild(btn);
     },
-    
-    /**
-     * 发送紧急信息
-     */
-    sendEmergencyInfo() {
-        // 检查是否有紧急联系人
-        if (this.emergencyContacts.length === 0) {
-            this.showNotification('请先添加紧急联系人', 'error');
-            return;
-        }
-        
-        // 显示发送中提示
-        this.showNotification('正在发送紧急信息...');
-        
-        // 模拟发送延迟
-        setTimeout(() => {
-            // 实际应用中，这里应该调用API发送紧急信息
-            // 例如发送短信、推送通知等
-            
-            // 显示发送成功提示
-            this.showNotification(`紧急信息已发送给 ${this.emergencyContacts.length} 位联系人`);
-            
-            // 记录紧急信息发送事件
-            this.logEmergencyInfoEvent();
-        }, 2000);
-    },
-    
-    /**
-     * 记录SOS事件
-     */
-    logSosEvent() {
-        try {
-            const event = {
-                type: 'sos',
-                timestamp: new Date().getTime(),
-                location: { ...this.currentLocation }
-            };
-            
-            // 获取现有事件记录
-            const savedEvents = JSON.parse(localStorage.getItem('pzkayak_safety_events') || '[]');
-            
-            // 添加新事件
-            savedEvents.push(event);
-            
-            // 只保留最近20条记录
-            if (savedEvents.length > 20) {
-                savedEvents.shift();
-            }
-            
-            // 保存记录
-            localStorage.setItem('pzkayak_safety_events', JSON.stringify(savedEvents));
-        } catch (error) {
-            console.error('记录SOS事件失败:', error);
-        }
-    },
-    
-    /**
-     * 记录紧急信息发送事件
-     */
-    logEmergencyInfoEvent() {
-        try {
-            const event = {
-                type: 'emergency_info',
-                timestamp: new Date().getTime(),
-                location: { ...this.currentLocation },
-                contacts: this.emergencyContacts.map(c => ({ id: c.id, name: c.name }))
-            };
-            
-            // 获取现有事件记录
-            const savedEvents = JSON.parse(localStorage.getItem('pzkayak_safety_events') || '[]');
-            
-            // 添加新事件
-            savedEvents.push(event);
-            
-            // 只保留最近20条记录
-            if (savedEvents.length > 20) {
-                savedEvents.shift();
-            }
-            
-            // 保存记录
-            localStorage.setItem('pzkayak_safety_events', JSON.stringify(savedEvents));
-        } catch (error) {
-            console.error('记录紧急信息发送事件失败:', error);
-        }
-    },
-    
-    /**
-     * 显示通知
-     * @param {string} message - 通知消息
-     * @param {string} type - 通知类型 ('success', 'warning', 'error')
-     */
-    showNotification(message, type = 'success') {
-        // 简单的通知实现
-        // 实际应用中可以使用更复杂的通知系统
-        alert(message);
+
+    actualizarBarraEquipo() {
+        // ya se renderiza en renderEquipo
     }
 };
 
-// 导出模块
 window.safetyModule = safetyModule;

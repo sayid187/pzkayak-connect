@@ -8,11 +8,11 @@ const pzKayakApp = {
     isOnline: navigator.onLine,
     
     // Inicializar aplicación
-    init() {
+    async init() {
         console.log('Inicializando la aplicación PzKayak Connect...');
         
         this.setupEventListeners();
-        this.initModules();
+        await this.initModules();
         this.showWelcomeMessage();
         
         console.log('Inicialización de PzKayak Connect completada');
@@ -132,10 +132,6 @@ const pzKayakApp = {
             if (isFirstTime) {
                 localStorage.setItem('pzkayak_first_time', 'false');
                 localStorage.setItem('pzkayak_version', '1.0.0');
-                
-                setTimeout(() => {
-                    this.showNotification('¡Bienvenido a PzKayak Connect!', 'success');
-                }, 1000);
             }
         } else {
             console.warn('El navegador no soporta almacenamiento local, algunas funciones pueden verse afectadas');
@@ -143,12 +139,15 @@ const pzKayakApp = {
         }
     },
     
-    initModules() {
+    async initModules() {
         if (typeof weatherModule !== 'undefined') weatherModule.init();
-        if (typeof tripTracking !== 'undefined') tripTracking.init();
-        if (typeof catchLog !== 'undefined') catchLog.init();
+        if (typeof tripTracking !== 'undefined') await tripTracking.init();
+        if (typeof catchLog !== 'undefined') await catchLog.init();
         if (typeof communityModule !== 'undefined') communityModule.init();
-        if (typeof safetyModule !== 'undefined') safetyModule.init();
+        if (typeof safetyModule !== 'undefined') await safetyModule.init();
+        if (typeof profileModule !== 'undefined') await profileModule.init();
+        if (typeof legalModule !== 'undefined') legalModule.init();
+        if (typeof marineModule !== 'undefined') await marineModule.init();
     },
     
     onPageChange(pageId) {
@@ -162,13 +161,22 @@ const pzKayakApp = {
                 if (typeof tripTracking !== 'undefined') tripTracking.updateUI();
                 break;
             case 'catch-page':
-                if (typeof catchLog !== 'undefined') catchLog.updateCatchList();
+                if (typeof catchLog !== 'undefined') catchLog.loadCatches().then(() => catchLog.updateCatchList());
                 break;
             case 'community-page':
                 if (typeof communityModule !== 'undefined') communityModule.refreshLocations();
                 break;
             case 'safety-page':
                 if (typeof safetyModule !== 'undefined') safetyModule.updateCurrentLocation();
+                break;
+            case 'marine-page':
+                if (typeof marineModule !== 'undefined') marineModule.refresh();
+                break;
+            case 'regulations-page':
+                if (typeof legalModule !== 'undefined') legalModule.renderZona(legalModule.zonaActual);
+                break;
+            case 'profile-page':
+                if (typeof profileModule !== 'undefined') profileModule.renderEstadisticas();
                 break;
         }
     },
@@ -242,5 +250,5 @@ const pzKayakApp = {
 };
 
 document.addEventListener('DOMContentLoaded', () => {
-    pzKayakApp.init();
+    pzKayakApp.init().catch(console.error);
 });
