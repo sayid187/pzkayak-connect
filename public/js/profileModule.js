@@ -387,9 +387,9 @@ const profileModule = {
         try {
             const datos = {
                 perfil:   this.perfil,
-                capturas: (await db.from('capturas').select('*')).data || [],
-                viajes:   (await db.from('viajes').select('*')).data   || [],
-                contactos:(await db.from('contactos_emergencia').select('*')).data || [],
+                capturas: (await db.from('capturas').select('*').eq('user_id', (await db.auth.getSession()).data.session?.user.id)).data || [],
+                viajes:   (await db.from('viajes').select('*').eq('user_id', (await db.auth.getSession()).data.session?.user.id)).data || [],
+                contactos:(await db.from('contactos_emergencia').select('*').eq('user_id', (await db.auth.getSession()).data.session?.user.id)).data || [],
                 exportado: new Date().toISOString()
             };
             const blob = new Blob([JSON.stringify(datos, null, 2)], { type: 'application/json' });
@@ -405,20 +405,31 @@ const profileModule = {
 
     eliminarCuenta() {
         if (!confirm('¿Eliminar todos tus datos? Esta acción no se puede deshacer.')) return;
-        if (!confirm('¿Estás seguro? Se borrarán viajes, capturas y configuración.')) return;
-        const keys = ['pzkayak_perfil','pzkayak_config','pzkayak_catches','pzkayak_trips',
-                      'pzkayak_contactos_emergencia','pzkayak_equipo_seguridad','pzkayak_first_time'];
-        keys.forEach(k => localStorage.removeItem(k));
-        alert('Todos tus datos han sido eliminados.');
-        location.reload();
+        if (!confirm('¿Estás seguro? Se eliminarán TODOS tus datos permanentemente.')) return;
+        try {
+            const { data: { session } } = await db.auth.getSession();
+            if (session) {
+                await db.from('capturas').delete().eq('user_id', session.user.id);
+                await db.from('viajes').delete().eq('user_id', session.user.id);
+                await db.from('contactos_emergencia').delete().eq('user_id', session.user.id);
+                await db.from('playas_favoritas').delete().eq('user_id', session.user.id);
+            }
+            localStorage.removeItem('pzkayak_equipo_seguridad');
+            alert('Todos tus datos han sido eliminados.');
+            location.reload();
+        } catch (err) { alert('Error: ' + err.message); }
     },
 
     // ── CERRAR SESIÓN ─────────────────────────────────────────────────────────
 
-    cerrarSesion() {
+    async cerrarSesion() {
         if (!confirm('¿Cerrar sesión?')) return;
-        this.mostrarToast('Sesión cerrada — hasta pronto 🎣');
-        setTimeout(() => location.reload(), 1500);
+        if (typeof cerrarSesionApp === 'function') {
+            await cerrarSesionApp();
+        } else {
+            await db.auth.signOut();
+            location.reload();
+        }
     },
 
     // ── TOAST ─────────────────────────────────────────────────────────────────
