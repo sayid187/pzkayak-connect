@@ -629,23 +629,58 @@
             <section id="marine-page" class="page">
                 <div class="mb-4">
 
-                    <!-- Semáforo condiciones -->
-                    <div class="card p-5 mb-4" id="marine-semaforo-card">
-                        <div class="flex items-center justify-between mb-3">
-                            <h2 class="text-lg font-semibold">Condiciones del Mar</h2>
-                            <button id="marine-refresh-btn" class="text-primary text-sm flex items-center gap-1">
-                                <i class="fa fa-refresh"></i> Actualizar
+                    <!-- Buscador -->
+                    <div class="card p-4 mb-4">
+                        <h2 class="text-lg font-semibold mb-3">Condiciones del Mar</h2>
+                        <div class="flex gap-2 mb-2">
+                            <div class="relative flex-1">
+                                <input id="marine-search" type="text"
+                                    class="input-field pr-4"
+                                    placeholder="Buscar playa... ej: Playa Parguito">
+                            </div>
+                            <button id="marine-search-btn"
+                                class="w-11 h-11 bg-primary rounded-xl flex items-center justify-center flex-shrink-0">
+                                <i class="fa fa-search text-white"></i>
+                            </button>
+                            <button id="marine-gps-btn"
+                                class="w-11 h-11 bg-gray-100 rounded-xl flex items-center justify-center flex-shrink-0"
+                                title="Usar mi ubicación">
+                                <i class="fa fa-location-arrow text-primary"></i>
                             </button>
                         </div>
-                        <div id="marine-semaforo" class="flex flex-col items-center py-4">
-                            <div class="w-20 h-20 rounded-full bg-gray-200 flex items-center justify-center mb-3 animate-pulse">
-                                <i class="fa fa-spinner fa-spin text-gray-400 text-2xl"></i>
+                        <div id="marine-sugerencias" class="hidden relative z-20 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden"></div>
+                        <div id="marine-playa-activa" class="hidden mt-2 flex items-center justify-between p-2 bg-blue-50 rounded-lg">
+                            <div class="flex items-center gap-2">
+                                <i class="fa fa-map-marker text-primary text-sm"></i>
+                                <span id="marine-playa-nombre" class="text-sm font-medium text-primary"></span>
+                                <span id="marine-gps-tag" class="hidden text-xs bg-blue-200 text-blue-700 px-1.5 py-0.5 rounded-full">GPS</span>
                             </div>
-                            <p class="text-gray-400 text-sm">Obteniendo datos...</p>
+                            <div class="flex items-center gap-3">
+                                <button id="marine-guardar-btn" class="text-xs text-primary flex items-center gap-1">
+                                    <i class="fa fa-heart-o"></i> Guardar
+                                </button>
+                                <button id="marine-refresh-btn" class="text-xs text-gray-400 hover:text-primary">
+                                    <i class="fa fa-refresh"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div id="marine-favoritos-cont" class="hidden mt-3">
+                            <p class="text-xs text-gray-400 mb-2">Playas guardadas:</p>
+                            <div id="marine-favoritos" class="flex flex-wrap gap-2"></div>
                         </div>
                     </div>
 
-                    <!-- Datos del mar -->
+                    <!-- Semáforo -->
+                    <div class="card p-5 mb-4">
+                        <div id="marine-semaforo" class="flex flex-col items-center py-4">
+                            <div class="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center mb-3">
+                                <i class="fa fa-search text-gray-300 text-2xl"></i>
+                            </div>
+                            <p class="text-gray-400 text-sm text-center">Busca una playa o usa tu GPS</p>
+                        </div>
+                    </div>
+
+                    <!-- Datos actuales -->
                     <div class="card p-4 mb-4">
                         <h3 class="font-semibold mb-3">Datos Actuales</h3>
                         <div id="marine-datos" class="grid grid-cols-2 gap-3"></div>
@@ -657,8 +692,8 @@
                         <div id="marine-pronostico" class="space-y-2"></div>
                     </div>
 
-                    <!-- Recomendaciones kayak -->
-                    <div class="card p-4 mb-4" id="marine-recomendaciones-card">
+                    <!-- Recomendaciones -->
+                    <div class="card p-4 mb-4">
                         <h3 class="font-semibold mb-3"><i class="fa fa-ship mr-1 text-primary"></i>Recomendaciones para Kayak</h3>
                         <div id="marine-recomendaciones" class="space-y-2"></div>
                     </div>
