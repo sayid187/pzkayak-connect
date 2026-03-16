@@ -1281,9 +1281,9 @@
             iniciarTemporizadorInactividad();
         }
 
-        function cerrarSesion(motivo = '') {
+        async function cerrarSesion(motivo = '') {
             clearTimeout(inactivityTimer);
-            db.auth.signOut();
+            await db.auth.signOut();
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
             document.getElementById('auth-page').classList.add('active');
             document.getElementById('app-header').classList.add('hidden');
@@ -1308,10 +1308,13 @@
 
         // Escuchar cambios de sesión Supabase
         db.auth.onAuthStateChange((event, session) => {
-            if (session) {
+            if (event === 'SIGNED_IN' && session) {
                 entrarApp(session.user);
             } else if (event === 'SIGNED_OUT') {
-                // ya manejado en cerrarSesion()
+                document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+                document.getElementById('auth-page').classList.add('active');
+                document.getElementById('app-header').classList.add('hidden');
+                document.getElementById('app-nav').classList.add('hidden');
             }
         });
 
