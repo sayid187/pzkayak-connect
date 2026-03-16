@@ -403,7 +403,7 @@ const profileModule = {
         } catch { alert('Error al exportar datos'); }
     },
 
-    eliminarCuenta() {
+    async eliminarCuenta() {
         if (!confirm('¿Eliminar todos tus datos? Esta acción no se puede deshacer.')) return;
         if (!confirm('¿Estás seguro? Se eliminarán TODOS tus datos permanentemente.')) return;
         try {
