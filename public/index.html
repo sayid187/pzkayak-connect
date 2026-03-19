@@ -68,19 +68,29 @@
         }
         
         .nav-item {
-            @apply flex flex-col items-center justify-center p-2 text-gray-600 transition-colors duration-200;
+            @apply flex flex-col items-center justify-center text-gray-400 transition-all duration-200 flex-shrink-0;
+            min-width: 64px;
+            padding: 8px 4px 6px;
         }
         
         .nav-item.active {
             @apply text-primary;
         }
-        
+        .nav-item.active .nav-icon-wrap {
+            background: rgba(59,130,246,0.12);
+        }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+
+        .nav-item.active i {
+            transform: translateY(-2px);
+        }
+
         .nav-item i {
-            @apply text-xl mb-1;
+            @apply text-xl mb-1 transition-transform duration-200;
         }
         
         .nav-item span {
-            @apply text-xs;
+            @apply text-xs font-medium;
         }
         
         .btn {
@@ -850,17 +860,58 @@
             </section>
         </main>
         
-        <nav id="app-nav" class="fixed bottom-0 left-0 right-0 bg-white shadow-lg border-t border-gray-200 z-20 hidden">
-            <div class="container mx-auto max-w-md">
-                <div class="flex justify-around">
-                    <button class="nav-item active" data-page="dashboard-page"><i class="fa fa-home"></i><span>Inicio</span></button>
-                    <button class="nav-item" data-page="trip-page"><i class="fa fa-flag"></i><span>Viaje</span></button>
-                    <button class="nav-item" data-page="catch-page"><i class="fa fa-trophy"></i><span>Captura</span></button>
-                    <button class="nav-item" data-page="community-page"><i class="fa fa-users"></i><span>Comunidad</span></button>
-                    <button class="nav-item" data-page="safety-page"><i class="fa fa-shield"></i><span>Seguridad</span></button>
-                    <button class="nav-item" data-page="marine-page"><i class="fa fa-life-ring"></i><span>Mar</span></button>
-                    <button class="nav-item" data-page="regulations-page"><i class="fa fa-gavel"></i><span>Leyes</span></button>
-                    <button class="nav-item" data-page="profile-page"><i class="fa fa-user"></i><span>Perfil</span></button>
+        <nav id="app-nav" class="fixed bottom-0 left-0 right-0 z-20 hidden" style="background:white;border-top:1px solid #e5e7eb;box-shadow:0 -4px 20px rgba(0,0,0,0.08);">
+            <!-- Indicador activo animado -->
+            <div class="overflow-x-auto scrollbar-hide" style="-webkit-overflow-scrolling:touch;scrollbar-width:none;">
+                <div class="flex" style="min-width:max-content;padding:0 8px env(safe-area-inset-bottom);">
+                    <button class="nav-item active" data-page="dashboard-page">
+                        <div class="nav-icon-wrap" style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:10px;transition:background 0.2s;">
+                            <i class="fa fa-home" style="font-size:18px;"></i>
+                        </div>
+                        <span>Inicio</span>
+                    </button>
+                    <button class="nav-item" data-page="trip-page">
+                        <div class="nav-icon-wrap" style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:10px;transition:background 0.2s;">
+                            <i class="fa fa-flag" style="font-size:18px;"></i>
+                        </div>
+                        <span>Viaje</span>
+                    </button>
+                    <button class="nav-item" data-page="catch-page">
+                        <div class="nav-icon-wrap" style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:10px;transition:background 0.2s;">
+                            <i class="fa fa-trophy" style="font-size:18px;"></i>
+                        </div>
+                        <span>Captura</span>
+                    </button>
+                    <button class="nav-item" data-page="community-page">
+                        <div class="nav-icon-wrap" style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:10px;transition:background 0.2s;">
+                            <i class="fa fa-users" style="font-size:18px;"></i>
+                        </div>
+                        <span>Comunidad</span>
+                    </button>
+                    <button class="nav-item" data-page="safety-page">
+                        <div class="nav-icon-wrap" style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:10px;transition:background 0.2s;">
+                            <i class="fa fa-shield" style="font-size:18px;"></i>
+                        </div>
+                        <span>Seguridad</span>
+                    </button>
+                    <button class="nav-item" data-page="marine-page">
+                        <div class="nav-icon-wrap" style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:10px;transition:background 0.2s;">
+                            <i class="fa fa-life-ring" style="font-size:18px;"></i>
+                        </div>
+                        <span>Mar</span>
+                    </button>
+                    <button class="nav-item" data-page="regulations-page">
+                        <div class="nav-icon-wrap" style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:10px;transition:background 0.2s;">
+                            <i class="fa fa-gavel" style="font-size:18px;"></i>
+                        </div>
+                        <span>Leyes</span>
+                    </button>
+                    <button class="nav-item" data-page="profile-page">
+                        <div class="nav-icon-wrap" style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:10px;transition:background 0.2s;">
+                            <i class="fa fa-user" style="font-size:18px;"></i>
+                        </div>
+                        <span>Perfil</span>
+                    </button>
                 </div>
             </div>
         </nav>
