@@ -393,6 +393,7 @@ const marineModule = {
                     legend: { display: false },
                     tooltip: { callbacks: { label: ctx => [`Altura: ${ctx.parsed.y.toFixed(2)} m`, `Pesca: ${actividades[ctx.dataIndex].peces}`] } }
                 },
+                layout: { padding: { bottom: 28 } },
                 scales: {
                     x: { ticks: { maxTicksLimit:7, font:{size:10} }, grid: { display:false } },
                     y: { ticks: { font:{size:10} }, grid: { color:'rgba(0,0,0,0.05)' } }
@@ -420,15 +421,16 @@ const marineModule = {
                         ctx.fillText(label, px, py - 10);
                         ctx.restore();
                     });
-                    // Pececitos cada 3h alineados con el eje X
+                    // Pececitos cada 3h — dentro del área del gráfico, en la parte baja
                     actividades.forEach((act, i) => {
                         if (i % 3 !== 0 || act.peces === '—') return;
                         const px = x.getPixelForValue(i);
                         if (px < chart.chartArea.left || px > chart.chartArea.right) return;
-                        const py = chart.chartArea.bottom + 18;
+                        const py = chart.chartArea.bottom - 8;
                         ctx.save();
                         ctx.font = '10px serif';
                         ctx.textAlign = 'center';
+                        ctx.globalAlpha = 0.85;
                         ctx.fillText(act.peces, px, py);
                         ctx.restore();
                     });

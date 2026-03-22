@@ -404,7 +404,8 @@ const profileModule = {
     },
 
     async eliminarCuenta() {
-        if (!await confirmar('¿Eliminar todos tus datos? Esta acción no se puede deshacer.')) return;
+        const ok = typeof confirmar === 'function' ? await confirmar('¿Eliminar todos tus datos? Esta acción no se puede deshacer.') : confirm('¿Eliminar todos tus datos?');
+        if (!ok) return;
         
         try {
             const { data: { session } } = await db.auth.getSession();
@@ -423,7 +424,8 @@ const profileModule = {
     // ── CERRAR SESIÓN ─────────────────────────────────────────────────────────
 
     async cerrarSesion() {
-        if (!await confirmar('¿Cerrar sesión?')) return;
+        const ok = typeof confirmar === 'function' ? await confirmar('¿Cerrar sesión?') : confirm('¿Cerrar sesión?');
+        if (!ok) return;
         if (typeof cerrarSesionApp === 'function') {
             await cerrarSesionApp();
         } else {
