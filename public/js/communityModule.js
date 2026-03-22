@@ -324,7 +324,7 @@ const communityModule = {
         toast(`¡Te uniste a "${act.titulo}"!`, "success");
     },
 
-    salirActividad(id) {
+    async salirActividad(id) {
         const act = this.actividades.find(a => a.id === id);
         if (!act) return;
         if (!await confirmar(`¿Salir de "${act.titulo}"?`)) return;
