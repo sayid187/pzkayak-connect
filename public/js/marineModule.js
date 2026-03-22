@@ -402,6 +402,8 @@ const marineModule = {
                 id: 'markers',
                 afterDraw: chart => {
                     const { ctx, scales:{x,y} } = chart;
+                    const total = labels.length;
+
                     // Puntos pleamar/bajamar
                     extremos.forEach(e => {
                         const label = new Date(e.dt*1000).toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'});
@@ -418,13 +420,14 @@ const marineModule = {
                         ctx.fillText(label, px, py - 10);
                         ctx.restore();
                     });
-                    // Pececitos debajo del gráfico cada 3h
+                    // Pececitos cada 3h alineados con el eje X
                     actividades.forEach((act, i) => {
-                        if (i % 3 !== 0) return;
+                        if (i % 3 !== 0 || act.peces === '—') return;
                         const px = x.getPixelForValue(i);
-                        const py = chart.chartArea.bottom + 14;
+                        if (px < chart.chartArea.left || px > chart.chartArea.right) return;
+                        const py = chart.chartArea.bottom + 18;
                         ctx.save();
-                        ctx.font = '11px serif';
+                        ctx.font = '10px serif';
                         ctx.textAlign = 'center';
                         ctx.fillText(act.peces, px, py);
                         ctx.restore();
