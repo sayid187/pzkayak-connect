@@ -178,10 +178,10 @@ const communityModule = {
         });
     },
 
-    eliminarAmigo(id) {
+    async eliminarAmigo(id) {
         const amigo = this.amigos.find(a => a.id === id);
         if (!amigo) return;
-        if (!(await toast.confirm(`¿Eliminar a ${amigo.nombre} de tus amigos?`)) return;
+        if (!await confirmar(`¿Eliminar a ${amigo.nombre} de tus amigos?`)) return;
         this.amigos = this.amigos.filter(a => a.id !== id);
         // Devolver a cercanos
         this.cercanos.unshift({
@@ -195,7 +195,7 @@ const communityModule = {
     },
 
     enviarMensaje(amigo) {
-        toast.info(`Chat con ${amigo.nombre} — función próximamente`);
+        toast(`Chat con ${amigo.nombre} — función próximamente`, "info");
     },
 
     // ── PESCADORES CERCANOS ───────────────────────────────────────────────────
@@ -232,7 +232,7 @@ const communityModule = {
 
     agregarAmigo(pescador) {
         if (this.amigos.some(a => a.id === pescador.id)) {
-            toast.info(`${pescador.nombre} ya es tu amigo`); return;
+            toast(`${pescador.nombre} ya es tu amigo`, "info"); return;
         }
         const [lat, lng] = this.currentUser.coordinates;
         this.amigos.push({
@@ -247,7 +247,7 @@ const communityModule = {
         });
         this.cercanos = this.cercanos.filter(p => p.id !== pescador.id);
         this.render();
-        toast.success(`¡${pescador.nombre} añadido como amigo!`);
+        toast(`¡${pescador.nombre} añadido como amigo!`, "success");
     },
 
     // ── ACTIVIDADES ───────────────────────────────────────────────────────────
@@ -321,13 +321,13 @@ const communityModule = {
         if (!act || act.participantes.includes(this.currentUser.id)) return;
         act.participantes.push(this.currentUser.id);
         this.renderActividades();
-        toast.success(`¡Te uniste a "${act.titulo}"!`);
+        toast(`¡Te uniste a "${act.titulo}"!`, "success");
     },
 
     salirActividad(id) {
         const act = this.actividades.find(a => a.id === id);
         if (!act) return;
-        if (!(await toast.confirm(`¿Salir de "${act.titulo}"?`)) return;
+        if (!await confirmar(`¿Salir de "${act.titulo}"?`)) return;
         act.participantes = act.participantes.filter(p => p !== this.currentUser.id);
         this.renderActividades();
     },
@@ -337,7 +337,7 @@ const communityModule = {
         if (navigator.share) {
             navigator.share({ title: act.titulo, text: texto });
         } else {
-            navigator.clipboard?.writeText(texto).then(() => toast.info('Enlace copiado al portapapeles'));
+            navigator.clipboard?.writeText(texto).then(() => toast('Enlace copiado al portapapeles', "info"));
         }
     },
 
@@ -377,7 +377,7 @@ const communityModule = {
             const hora   = document.getElementById('act-hora').value;
             const max    = parseInt(document.getElementById('act-max').value) || 10;
 
-            if (!titulo || !lugar || !fecha) { toast.info('Completa todos los campos'); return; }
+            if (!titulo || !lugar || !fecha) { toast('Completa todos los campos', "info"); return; }
 
             this.actividades.unshift({
                 id: 'act_' + Date.now(),
@@ -388,7 +388,7 @@ const communityModule = {
             });
             overlay.remove();
             this.renderActividades();
-            toast.success(`¡Actividad "${titulo}" creada!`);
+            toast(`¡Actividad "${titulo}" creada!`, "success");
         };
     },
 
