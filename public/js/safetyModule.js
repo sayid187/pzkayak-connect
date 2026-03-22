@@ -109,7 +109,7 @@ const safetyModule = {
 
     confirmarSOS() {
         if (this.sosActivo) {
-            if (confirm('¿Cancelar la alerta SOS?')) this.cancelarSOS();
+            confirmar('¿Cancelar la alerta SOS?').then(ok => { if (ok) this.cancelarSOS(); });
             return;
         }
 
@@ -162,7 +162,7 @@ const safetyModule = {
         // Simular envío a contactos
         const nombres = this.contactos.map(c => c.nombre).join(', ');
         setTimeout(() => {
-            alert(`✅ Alerta SOS enviada a: ${nombres}\n\nUbicación: ${
+            toast.info(`✅ Alerta SOS enviada a: ${nombres}\n\nUbicación: ${
                 this.ubicacionActual.lat
                     ? `${this.ubicacionActual.lat.toFixed(5)}, ${this.ubicacionActual.lng.toFixed(5)}`
                     : 'No disponible'
@@ -188,7 +188,7 @@ const safetyModule = {
 2. Emergencias: 133
 3. ${this.contactos[0]?.nombre || 'Contacto'}: ${this.contactos[0]?.telefono || 'No configurado'}
         `.trim();
-        alert(opciones);
+        toast.info(opciones);
     },
 
     // ── CONTACTOS ─────────────────────────────────────────────────────────────
@@ -224,7 +224,7 @@ const safetyModule = {
                     </button>
                 </div>
             `;
-            item.querySelector('.btn-llamar').onclick   = () => alert(`Llamando a ${c.nombre}: ${c.telefono}`);
+            item.querySelector('.btn-llamar').onclick   = () => toast.info(`Llamando a ${c.nombre}: ${c.telefono}`);
             item.querySelector('.btn-editar').onclick   = () => this.editarContacto(c.id);
             item.querySelector('.btn-eliminar').onclick = () => this.eliminarContacto(c.id);
             cont.appendChild(item);
@@ -267,7 +267,7 @@ const safetyModule = {
             const nombre   = document.getElementById('c-nombre').value.trim();
             const relacion = document.getElementById('c-relacion').value.trim();
             const telefono = document.getElementById('c-telefono').value.trim();
-            if (!nombre || !telefono) { alert('Nombre y teléfono son obligatorios'); return; }
+            if (!nombre || !telefono) { toast.error('Nombre y teléfono son obligatorios'); return; }
 
             try {
                 if (esEdicion) {
@@ -280,7 +280,7 @@ const safetyModule = {
                 }
                 this.renderContactos();
                 modal.remove();
-            } catch (err) { alert('Error al guardar: ' + err.message); }
+            } catch (err) { toast.error('Error al guardar: ' + err.message); }
         };
     },
 
@@ -292,7 +292,7 @@ const safetyModule = {
     async eliminarContacto(id) {
         const c = this.contactos.find(x => x.id === id);
         if (!c) return;
-        if (!confirm(`¿Eliminar a ${c.nombre} de tus contactos de emergencia?`)) return;
+        if (!await confirmar(`¿Eliminar a ${c.nombre} de tus contactos de emergencia?`)) return;
         this.contactos = this.contactos.filter(x => x.id !== id);
         await this.eliminarContactoDb(id);
         this.renderContactos();
@@ -356,9 +356,9 @@ const safetyModule = {
         btn.onclick = () => {
             if (pct < 100) {
                 const faltantes = this.equipo.filter(e => !e.checked).map(e => `• ${e.nombre}`).join('\n');
-                alert(`Aún faltan estos elementos:\n\n${faltantes}`);
+                toast.error(`Aún faltan estos elementos:\n\n${faltantes}`);
             } else {
-                alert('✅ ¡Equipo completo! Estás listo para salir a pescar.');
+                toast.success('✅ ¡Equipo completo! Estás listo para salir a pescar.');
             }
         };
         cont.appendChild(btn);

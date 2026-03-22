@@ -647,7 +647,7 @@ const marineModule = {
 
     async guardarFavorito() {
         if (!this.playaActual) return;
-        if (this.favoritos.some(f => f.nombre === this.playaActual.nombre)) { alert('Esta playa ya está guardada'); return; }
+        if (this.favoritos.some(f => f.nombre === this.playaActual.nombre)) { toast.success('Esta playa ya está guardada'); return; }
         try {
             const { data: { session } } = await db.auth.getSession();
             if (!session) return;
@@ -664,7 +664,7 @@ const marineModule = {
             this.renderFavoritos();
             const btn = document.getElementById('marine-guardar-btn');
             if (btn) btn.innerHTML = '<i class="fa fa-heart mr-1 text-red-400"></i>Guardada';
-        } catch (err) { alert('Error al guardar: ' + err.message); }
+        } catch (err) { toast.error('Error al guardar: ' + err.message); }
     },
 
     renderFavoritos() {

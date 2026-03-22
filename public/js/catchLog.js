@@ -79,7 +79,7 @@ const catchLog = {
     },
 
     previewImage(file) {
-        if (!file.type.match('image.*')) { alert('Selecciona un archivo de imagen'); return; }
+        if (!file.type.match('image.*')) { toast.error('Selecciona un archivo de imagen'); return; }
         const area = document.getElementById('photo-upload-area');
         if (!area) return;
         const reader = new FileReader();
@@ -114,7 +114,7 @@ const catchLog = {
             addMarkerBtn.addEventListener('click', () => {
                 navigator.geolocation?.getCurrentPosition(
                     (pos) => this.setLocation(pos.coords.latitude, pos.coords.longitude),
-                    () => alert('No se pudo obtener tu ubicación')
+                    () => toast.error('No se pudo obtener tu ubicación')
                 );
             });
         }
@@ -140,11 +140,11 @@ const catchLog = {
         const prof     = this.form.querySelector('[name="depth"]')?.value || '';
         const notas    = this.form.querySelector('[name="notes"]')?.value || '';
 
-        if (!especie)  { alert('Por favor selecciona la especie'); return; }
-        if (!longitud) { alert('Por favor ingresa la longitud'); return; }
-        if (!peso)     { alert('Por favor ingresa el peso'); return; }
+        if (!especie)  { toast.error('Por favor selecciona la especie'); return; }
+        if (!longitud) { toast.error('Por favor ingresa la longitud'); return; }
+        if (!peso)     { toast.error('Por favor ingresa el peso'); return; }
         if (!this.currentLat || !this.currentLng) {
-            alert('Pulsa "Añadir Marcador" para registrar la ubicación');
+            toast.info('Pulsa "Añadir Marcador" para registrar la ubicación');
             return;
         }
 
@@ -164,7 +164,7 @@ const catchLog = {
             }
 
             const { data: { session } } = await db.auth.getSession();
-            if (!session) { alert('Tu sesión expiró, inicia sesión nuevamente'); return; }
+            if (!session) { toast.info('Tu sesión expiró, inicia sesión nuevamente'); return; }
 
             const catchData = {
                 user_id:    session.user.id,
@@ -199,11 +199,11 @@ const catchLog = {
 
             await this.loadCatches();
             this.updateCatchList();
-            alert('¡Captura guardada!');
+            toast.success('¡Captura guardada!');
 
         } catch (err) {
             console.error(err);
-            alert('Error al guardar: ' + err.message);
+            toast.error('Error al guardar: ' + err.message);
         } finally {
             if (btn) btn.disabled = false;
         }
@@ -344,9 +344,9 @@ const catchLog = {
     },
 
     async deleteCatch(id) {
-        if (!confirm('¿Eliminar esta captura?')) return;
+        if (!await confirmar('¿Eliminar esta captura?')) return;
         const { error } = await db.from('capturas').delete().eq('id', id);
-        if (error) { alert('Error al eliminar: ' + error.message); return; }
+        if (error) { toast.error('Error al eliminar: ' + error.message); return; }
         this.catches = this.catches.filter(c => c.id !== id);
         this.updateCatchList();
     }

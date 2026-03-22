@@ -302,7 +302,7 @@ const tripTracking = {
         this.showNotification(`Viaje del ${new Date(viaje.date).toLocaleDateString('es-ES')}`);
     },
 
-    showNotification(msg) { alert(msg); }
+    showNotification(msg) { toast.info(msg); }
 };
 
 window.tripTracking = tripTracking;

@@ -641,15 +641,20 @@
 
                     <!-- Buscador -->
                     <div class="card p-4 mb-4">
-                        <h2 class="text-lg font-semibold mb-3">🌊 Condiciones del Mar</h2>
+                        <h2 class="text-lg font-semibold mb-3">Condiciones del Mar</h2>
                         <div class="flex gap-2 mb-2">
                             <div class="relative flex-1">
-                                <input id="marine-search" type="text" class="input-field pr-4" placeholder="Buscar playa... ej: Playa Parguito">
+                                <input id="marine-search" type="text"
+                                    class="input-field pr-4"
+                                    placeholder="Buscar playa... ej: Playa Parguito">
                             </div>
-                            <button id="marine-search-btn" class="w-11 h-11 bg-primary rounded-xl flex items-center justify-center flex-shrink-0">
+                            <button id="marine-search-btn"
+                                class="w-11 h-11 bg-primary rounded-xl flex items-center justify-center flex-shrink-0">
                                 <i class="fa fa-search text-white"></i>
                             </button>
-                            <button id="marine-gps-btn" class="w-11 h-11 bg-gray-100 rounded-xl flex items-center justify-center flex-shrink-0" title="Usar mi ubicación">
+                            <button id="marine-gps-btn"
+                                class="w-11 h-11 bg-gray-100 rounded-xl flex items-center justify-center flex-shrink-0"
+                                title="Usar mi ubicación">
                                 <i class="fa fa-location-arrow text-primary"></i>
                             </button>
                         </div>
@@ -661,8 +666,12 @@
                                 <span id="marine-gps-tag" class="hidden text-xs bg-blue-200 text-blue-700 px-1.5 py-0.5 rounded-full">GPS</span>
                             </div>
                             <div class="flex items-center gap-3">
-                                <button id="marine-guardar-btn" class="text-xs text-primary flex items-center gap-1"><i class="fa fa-heart-o"></i> Guardar</button>
-                                <button id="marine-refresh-btn" class="text-xs text-gray-400 hover:text-primary"><i class="fa fa-refresh"></i></button>
+                                <button id="marine-guardar-btn" class="text-xs text-primary flex items-center gap-1">
+                                    <i class="fa fa-heart-o"></i> Guardar
+                                </button>
+                                <button id="marine-refresh-btn" class="text-xs text-gray-400 hover:text-primary">
+                                    <i class="fa fa-refresh"></i>
+                                </button>
                             </div>
                         </div>
                         <div id="marine-favoritos-cont" class="hidden mt-3">
@@ -671,18 +680,9 @@
                         </div>
                     </div>
 
-                    <!-- Actividad de Pesca Solunar -->
-                    <div class="card p-4 mb-4">
-                        <h3 class="font-semibold mb-3">🐟 Actividad de Pesca Hoy</h3>
-                        <div id="marine-solunar" class="flex flex-col items-center py-3">
-                            <p class="text-gray-400 text-sm">Busca una playa para ver la actividad</p>
-                        </div>
-                    </div>
-
-                    <!-- Semáforo oleaje -->
+                    <!-- Semáforo -->
                     <div class="card p-5 mb-4">
-                        <h3 class="font-semibold mb-3">🌊 Condiciones de Oleaje</h3>
-                        <div id="marine-semaforo" class="flex flex-col items-center py-2">
+                        <div id="marine-semaforo" class="flex flex-col items-center py-4">
                             <div class="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center mb-3">
                                 <i class="fa fa-search text-gray-300 text-2xl"></i>
                             </div>
@@ -692,50 +692,13 @@
 
                     <!-- Datos actuales -->
                     <div class="card p-4 mb-4">
-                        <h3 class="font-semibold mb-3">📊 Datos Actuales</h3>
+                        <h3 class="font-semibold mb-3">Datos Actuales</h3>
                         <div id="marine-datos" class="grid grid-cols-2 gap-3"></div>
-                    </div>
-
-                    <!-- Reloj de Mareas -->
-                    <div class="card p-4 mb-4">
-                        <h3 class="font-semibold mb-3">⏱ Estado de la Marea</h3>
-                        <div id="marine-reloj-mareas" class="flex flex-col items-center py-2">
-                            <p class="text-gray-400 text-sm">Cargando mareas...</p>
-                        </div>
-                    </div>
-
-                    <!-- Gráfico de Mareas -->
-                    <div class="card p-4 mb-4">
-                        <h3 class="font-semibold mb-3">📈 Gráfico de Mareas</h3>
-                        <div style="position:relative;height:220px;padding-bottom:20px;">
-                            <canvas id="marine-tide-chart"></canvas>
-                        </div>
-                        <div class="flex items-center gap-3 mt-3 text-xs text-gray-500 flex-wrap">
-                            <span>🐟🐟🐟 muy alta</span>
-                            <span>🐟🐟 alta</span>
-                            <span>🐟 media</span>
-                            <span>— baja</span>
-                        </div>
-                    </div>
-
-                    <!-- Tabla mensual -->
-                    <div class="card p-4 mb-4">
-                        <div class="flex items-center justify-between mb-3">
-                            <h3 class="font-semibold">📅 Tabla de Mareas</h3>
-                            <div class="flex items-center gap-1">
-                                <button id="marine-mes-prev" class="text-gray-400 hover:text-primary w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-100"><i class="fa fa-chevron-left text-xs"></i></button>
-                                <span id="marine-mes-label" class="text-sm font-medium text-primary px-1"></span>
-                                <button id="marine-mes-next" class="text-gray-400 hover:text-primary w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-100"><i class="fa fa-chevron-right text-xs"></i></button>
-                            </div>
-                        </div>
-                        <div id="marine-tabla-mareas" class="overflow-x-auto">
-                            <p class="text-gray-400 text-sm text-center py-4">Busca una playa para ver la tabla</p>
-                        </div>
                     </div>
 
                     <!-- Pronóstico 7 días -->
                     <div class="card p-4 mb-4">
-                        <h3 class="font-semibold mb-3">🗓 Pronóstico 7 Días</h3>
+                        <h3 class="font-semibold mb-3">Pronóstico 7 Días</h3>
                         <div id="marine-pronostico" class="space-y-2"></div>
                     </div>
 
@@ -980,6 +943,7 @@
         </div>
     </div>
     
+    <script src="js/toast.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
     <script src="js/supabase.js"></script>
     <script src="js/weatherModule.js"></script>
@@ -1382,7 +1346,7 @@
                 const { error } = await db.auth.signInWithPassword({ email, password });
 
                 if (error) {
-                    alert('Error: ' + (error.message === 'Invalid login credentials' ? 'Correo o contraseña incorrectos' : error.message));
+                    toast.error(error.message === 'Invalid login credentials' ? 'Correo o contraseña incorrectos' : error.message);
                 } else {
                     loginForm.reset();
                 }
@@ -1408,10 +1372,10 @@
                 });
 
                 if (error) {
-                    alert('Error: ' + error.message);
+                    toast.error(error.message);
                 } else {
                     registerForm.reset();
-                    alert('¡Cuenta creada! Revisa tu correo para confirmar.');
+                    toast.success('¡Cuenta creada! Revisa tu correo para confirmar.', 5000);
                 }
                 btn.disabled = false; btn.textContent = 'Crear Cuenta';
             });

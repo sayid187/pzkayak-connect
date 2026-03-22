@@ -245,7 +245,7 @@ const pzKayakApp = {
     },
     
     showNotification(message, type = 'success') {
-        alert(message);
+        toast.info(message);
     }
 };
 

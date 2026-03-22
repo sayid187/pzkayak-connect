@@ -196,7 +196,7 @@ const profileModule = {
         document.getElementById('modal-guardar').onclick = () => {
             const nombre = document.getElementById('p-nombre').value.trim();
             const bio    = document.getElementById('p-bio').value.trim();
-            if (!nombre) { alert('El nombre no puede estar vacío'); return; }
+            if (!nombre) { toast.info('El nombre no puede estar vacío'); return; }
             this.perfil.nombre = nombre;
             this.perfil.bio    = bio;
             this.guardarDatos();
@@ -380,7 +380,7 @@ const profileModule = {
     // ── SEGURIDAD ─────────────────────────────────────────────────────────────
 
     cambiarContrasena() {
-        alert('Cambio de contraseña disponible cuando se integre Supabase.');
+        toast.info('Cambio de contraseña disponible cuando se integre Supabase.');
     },
 
     async exportarDatos() {
@@ -400,12 +400,12 @@ const profileModule = {
             a.click();
             URL.revokeObjectURL(url);
             this.mostrarToast('Datos exportados correctamente');
-        } catch { alert('Error al exportar datos'); }
+        } catch { toast.error('Error al exportar datos'); }
     },
 
     async eliminarCuenta() {
-        if (!confirm('¿Eliminar todos tus datos? Esta acción no se puede deshacer.')) return;
-        if (!confirm('¿Estás seguro? Se eliminarán TODOS tus datos permanentemente.')) return;
+        if (!await confirmar('¿Eliminar todos tus datos? Esta acción no se puede deshacer.')) return;
+        
         try {
             const { data: { session } } = await db.auth.getSession();
             if (session) {
@@ -415,15 +415,15 @@ const profileModule = {
                 await db.from('playas_favoritas').delete().eq('user_id', session.user.id);
             }
             localStorage.removeItem('pzkayak_equipo_seguridad');
-            alert('Todos tus datos han sido eliminados.');
+            toast.success('Todos tus datos han sido eliminados.');
             location.reload();
-        } catch (err) { alert('Error: ' + err.message); }
+        } catch (err) { toast.error('Error: ' + err.message); }
     },
 
     // ── CERRAR SESIÓN ─────────────────────────────────────────────────────────
 
     async cerrarSesion() {
-        if (!confirm('¿Cerrar sesión?')) return;
+        if (!await confirmar('¿Cerrar sesión?')) return;
         if (typeof cerrarSesionApp === 'function') {
             await cerrarSesionApp();
         } else {
