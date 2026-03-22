@@ -407,7 +407,7 @@ const marineModule = {
                         const label = new Date(e.dt*1000).toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'});
                         const idx   = labels.indexOf(label);
                         if (idx === -1) return;
-                        const px = x.getPixelForIndex(idx);
+                        const px = x.getPixelForValue(idx);
                         const py = y.getPixelForValue(values[idx] ?? 0);
                         ctx.save();
                         ctx.fillStyle = e.type==='High' ? '#2563eb' : '#dc2626';
@@ -421,7 +421,7 @@ const marineModule = {
                     // Pececitos debajo del gráfico cada 3h
                     actividades.forEach((act, i) => {
                         if (i % 3 !== 0) return;
-                        const px = x.getPixelForIndex(i);
+                        const px = x.getPixelForValue(i);
                         const py = chart.chartArea.bottom + 14;
                         ctx.save();
                         ctx.font = '11px serif';
