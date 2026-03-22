@@ -461,17 +461,24 @@ const marineModule = {
         const pleamares = extremos.filter(e => e.type==='High' && new Date(e.dt*1000).toDateString()===hoy);
         const bajamares = extremos.filter(e => e.type==='Low'  && new Date(e.dt*1000).toDateString()===hoy);
 
-        let coef = 50;
+        let coef = 45;
         if (pleamares.length && bajamares.length) {
-            const maxH = Math.max(...pleamares.map(e=>e.height||0));
-            const minH = Math.min(...bajamares.map(e=>e.height||0));
-            coef = Math.min(120, Math.round((maxH - minH) * 40));
+            const maxH = Math.max(...pleamares.map(e => e.height || 0));
+            const minH = Math.min(...bajamares.map(e => e.height || 0));
+            const rango = maxH - minH;
+            // Escala calibrada para mareas chilenas (rango típico 1-2m)
+            // 0.5m -> 40 (baja), 1.0m -> 60 (media), 1.5m -> 85 (alta), 2.0m -> 110 (muy alta)
+            coef = Math.min(120, Math.round(rango * 58));
+        } else if (pleamares.length || bajamares.length) {
+            // Solo hay un tipo — estimación
+            const alts = [...pleamares, ...bajamares].map(e => Math.abs(e.height || 0));
+            coef = Math.min(120, Math.round(Math.max(...alts) * 45));
         }
 
         let actividad, peces, colorAct, descripcion;
-        if (coef >= 90)      { actividad='Muy Alta'; peces='🐟🐟🐟'; colorAct='#16a34a'; descripcion='Excelente día para pescar. Actividad de los peces al máximo.'; }
-        else if (coef >= 70) { actividad='Alta';     peces='🐟🐟';   colorAct='#2563eb'; descripcion='Buen día para pescar. Alta probabilidad de capturas.'; }
-        else if (coef >= 40) { actividad='Media';    peces='🐟';     colorAct='#ca8a04'; descripcion='Día regular. Aprovecha los periodos cerca de las mareas.'; }
+        if (coef >= 85)      { actividad='Muy Alta'; peces='🐟🐟🐟'; colorAct='#16a34a'; descripcion='Excelente día para pescar. Actividad de los peces al máximo.'; }
+        else if (coef >= 60) { actividad='Alta';     peces='🐟🐟';   colorAct='#2563eb'; descripcion='Buen día para pescar. Alta probabilidad de capturas.'; }
+        else if (coef >= 35) { actividad='Media';    peces='🐟';     colorAct='#ca8a04'; descripcion='Día regular. Aprovecha los periodos cerca de las mareas.'; }
         else                 { actividad='Baja';     peces='—';      colorAct='#9ca3af'; descripcion='Actividad baja hoy. Considera esperar mejores condiciones.'; }
 
         const proximas = extremos.filter(e => e.dt > ahora - 3600).slice(0, 4);
