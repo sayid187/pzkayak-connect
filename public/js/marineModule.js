@@ -17,7 +17,6 @@ const marineModule = {
         await this.cargarFavoritos();
         this.setupBuscador();
         this.renderFavoritos();
-        this.actualizarMesLabel();
         this.cargarPorGPS();
 
         document.getElementById('marine-refresh-btn')?.addEventListener('click', () => this.refresh());
