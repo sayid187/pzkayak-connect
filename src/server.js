@@ -69,6 +69,60 @@ app.post('/api/perfil/avatar', requireAuth, async (req, res) => {
     res.json({ url: publicUrl });
 });
 
+
+// ── MAREAS con caché compartido ───────────────────────────────
+// Todos los usuarios que consulten la misma playa el mismo día
+// comparten el mismo request a WorldTides
+const WORLDTIDES_KEY = '20c711ef-8e25-4726-891a-2f4a1c893d0c';
+
+app.get('/api/mareas', async (req, res) => {
+    const { lat, lng } = req.query;
+    if (!lat || !lng) return res.status(400).json({ error: 'lat y lng requeridos' });
+
+    // Redondear a 4 decimales para agrupar ubicaciones cercanas
+    const latR = parseFloat(parseFloat(lat).toFixed(4));
+    const lngR = parseFloat(parseFloat(lng).toFixed(4));
+    const hoy  = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+
+    try {
+        // 1. Buscar en caché
+        const { data: cache } = await supabaseAdmin
+            .from('mareas_cache')
+            .select('datos')
+            .eq('lat', latR)
+            .eq('lng', lngR)
+            .eq('fecha', hoy)
+            .single();
+
+        if (cache) {
+            console.log(`Cache HIT: ${latR},${lngR} ${hoy}`);
+            return res.json({ ...cache.datos, fromCache: true });
+        }
+
+        // 2. No hay caché — consultar WorldTides
+        console.log(`Cache MISS: ${latR},${lngR} ${hoy} — consultando WorldTides`);
+        const ahora  = Math.floor(Date.now() / 1000);
+        const url    = `https://www.worldtides.info/api/v3?heights&extremes&datum=LAT&lat=${latR}&lon=${lngR}&start=${ahora}&length=86400&step=3600&key=${WORLDTIDES_KEY}`;
+        const resp   = await fetch(url);
+        const datos  = await resp.json();
+
+        if (datos.status !== 200) {
+            return res.status(502).json({ error: datos.error || 'Error WorldTides' });
+        }
+
+        // 3. Guardar en caché para todos
+        await supabaseAdmin.from('mareas_cache').upsert({
+            lat: latR, lng: lngR, fecha: hoy, datos
+        }, { onConflict: 'lat,lng,fecha' });
+
+        res.json({ ...datos, fromCache: false });
+
+    } catch (err) {
+        console.error('Error mareas:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // ── INICIO ────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3000;
 if (process.env.NODE_ENV !== 'production') {

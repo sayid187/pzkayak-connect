@@ -5,14 +5,13 @@
 
 const marineModule = {
 
-    WORLDTIDES_KEY: '06870e70-f268-4512-ab8d-a50de4c89635',
+    WORLDTIDES_KEY: '20c711ef-8e25-4726-891a-2f4a1c893d0c',
 
     playaActual: null,
     favoritos: [],
     searchTimeout: null,
     ultimaActualizacion: null,
     tideChart: null,
-    mesOffset: 0,
 
     async init() {
         await this.cargarFavoritos();
@@ -24,16 +23,7 @@ const marineModule = {
         document.getElementById('marine-refresh-btn')?.addEventListener('click', () => this.refresh());
         document.getElementById('marine-guardar-btn')?.addEventListener('click', () => this.guardarFavorito());
         document.getElementById('marine-gps-btn')?.addEventListener('click', () => this.cargarPorGPS());
-        document.getElementById('marine-mes-prev')?.addEventListener('click', () => {
-            this.mesOffset--;
-            this.actualizarMesLabel();
-            if (this.playaActual) this.cargarTablaMensual(this.playaActual.lat, this.playaActual.lng);
-        });
-        document.getElementById('marine-mes-next')?.addEventListener('click', () => {
-            this.mesOffset++;
-            this.actualizarMesLabel();
-            if (this.playaActual) this.cargarTablaMensual(this.playaActual.lat, this.playaActual.lng);
-        });
+
     },
 
     refresh() {
@@ -136,8 +126,7 @@ const marineModule = {
     seleccionarLugar(lugar) {
         this.playaActual = lugar;
         this.ocultarSugerencias();
-        this.mesOffset = 0;
-        this.actualizarMesLabel();
+
 
         const badge  = document.getElementById('marine-playa-activa');
         const nombre = document.getElementById('marine-playa-nombre');
@@ -159,8 +148,7 @@ const marineModule = {
 
         Promise.all([
             this.cargarOleaje(lugar.lat, lugar.lng),
-            this.cargarMareas(lugar.lat, lugar.lng),
-            this.cargarTablaMensual(lugar.lat, lugar.lng)
+            this.cargarMareas(lugar.lat, lugar.lng)
         ]);
     },
 
@@ -300,16 +288,18 @@ const marineModule = {
 
     async cargarMareas(lat, lng) {
         try {
-            const ahora = Math.floor(Date.now() / 1000);
-            const url   = `https://www.worldtides.info/api/v3?heights&extremes&datum=LAT&lat=${lat}&lon=${lng}&start=${ahora}&length=86400&step=3600&key=${this.WORLDTIDES_KEY}`;
-            const res   = await fetch(url);
-            const data  = await res.json();
-            if (data.status !== 200) throw new Error(data.error || 'Error WorldTides');
+            // Usa el backend como proxy con caché compartido
+            // Todos los usuarios que consulten la misma playa el mismo día
+            // comparten el mismo request a WorldTides
+            const res  = await fetch(`/api/mareas?lat=${lat}&lng=${lng}`);
+            const data = await res.json();
+            if (data.error) throw new Error(data.error);
+            if (data.fromCache) console.log('Mareas desde caché compartido 🎯');
             this.renderRelojMareas(data);
             this.renderGraficoMareas(data);
             this.calcularSolunar(data);
         } catch (err) {
-            console.warn('WorldTides:', err);
+            console.warn('Mareas:', err);
             this.renderRelojMareasFallback();
             this.calcularSolunarSinMareas();
         }
@@ -527,112 +517,6 @@ const marineModule = {
         if (c) c.innerHTML = `<div class="text-center py-3"><p class="text-2xl mb-1">🐟</p><p class="text-sm text-gray-500">Busca una playa costera para ver la actividad solunar</p></div>`;
     },
 
-    // ── TABLA MENSUAL ─────────────────────────────────────────────────────────
-
-    async cargarTablaMensual(lat, lng) {
-        const cont = document.getElementById('marine-tabla-mareas');
-        if (!cont) return;
-        cont.innerHTML = '<p class="text-gray-400 text-sm text-center py-4"><i class="fa fa-spinner fa-spin mr-1"></i>Cargando tabla...</p>';
-
-        try {
-            const fecha  = new Date();
-            fecha.setMonth(fecha.getMonth() + this.mesOffset);
-            const inicio = new Date(fecha.getFullYear(), fecha.getMonth(), 1);
-            const fin    = new Date(fecha.getFullYear(), fecha.getMonth()+1, 0);
-            const startTs = Math.floor(inicio.getTime()/1000);
-            const length  = fin.getDate() * 86400;
-
-            const url  = `https://www.worldtides.info/api/v3?extremes&datum=LAT&lat=${lat}&lon=${lng}&start=${startTs}&length=${length}&key=${this.WORLDTIDES_KEY}`;
-            const res  = await fetch(url);
-            const data = await res.json();
-            if (data.status !== 200) throw new Error(data.error);
-            this.renderTablaMensual(data.extremes||[], inicio, fin);
-        } catch {
-            cont.innerHTML = '<p class="text-gray-400 text-sm text-center py-4">Tabla no disponible para esta ubicación</p>';
-        }
-    },
-
-    renderTablaMensual(extremos, inicio, fin) {
-        const cont = document.getElementById('marine-tabla-mareas');
-        if (!cont) return;
-
-        const porDia = {};
-        extremos.forEach(e => {
-            const d = new Date(e.dt*1000);
-            const k = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-            if (!porDia[k]) porDia[k] = [];
-            porDia[k].push(e);
-        });
-
-        const fases   = ['🌑','🌒','🌓','🌔','🌕','🌖','🌗','🌘'];
-        const hoyKey  = (() => { const h=new Date(); return `${h.getFullYear()}-${h.getMonth()}-${h.getDate()}`; })();
-        const diasSem = ['D','L','M','X','J','V','S'];
-
-        let html = `
-            <table style="width:100%;border-collapse:collapse;font-size:11px;">
-                <thead>
-                    <tr style="background:#eff6ff;color:#1e40af;text-align:center;">
-                        <th style="padding:6px 4px;text-align:left;">Día</th>
-                        <th style="padding:6px 2px;">🌙</th>
-                        <th style="padding:6px 2px;">1ª</th>
-                        <th style="padding:6px 2px;">2ª</th>
-                        <th style="padding:6px 2px;">3ª</th>
-                        <th style="padding:6px 2px;">4ª</th>
-                        <th style="padding:6px 2px;">Act.</th>
-                    </tr>
-                </thead><tbody>`;
-
-        for (let d = new Date(inicio); d <= fin; d.setDate(d.getDate()+1)) {
-            const dia    = d.getDate();
-            const k      = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-            const esHoy  = k === hoyKey;
-            const sem    = diasSem[d.getDay()];
-            const mareas = porDia[k] || [];
-            const fase   = fases[Math.floor((dia%29.5)/29.5*8)%8];
-
-            let coef = 50, peces = '🐟';
-            if (mareas.length >= 2) {
-                const alts = mareas.map(m=>m.height||0);
-                const rango = Math.max(...alts) - Math.min(...alts);
-                coef = Math.min(120, Math.round(rango*40));
-                if (coef >= 90)      peces = '🐟🐟🐟';
-                else if (coef >= 70) peces = '🐟🐟';
-                else if (coef < 40)  peces = '—';
-            }
-
-            const coefColor = coef>=90?'#16a34a':coef>=70?'#ca8a04':coef>=40?'#ea580c':'#9ca3af';
-
-            const fmtM = e => {
-                if (!e) return '<td style="padding:4px 2px;text-align:center;color:#d1d5db;">—</td>';
-                const t   = new Date(e.dt*1000).toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'});
-                const col = e.type==='High'?'#2563eb':'#dc2626';
-                const ico = e.type==='High'?'▲':'▼';
-                return `<td style="padding:4px 2px;text-align:center;color:${col};"><strong>${t}</strong><br>${ico}${(e.height||0).toFixed(1)}m</td>`;
-            };
-
-            html += `
-                <tr style="${esHoy?'background:#dbeafe;font-weight:bold;':''}border-bottom:1px solid #f3f4f6;">
-                    <td style="padding:5px 4px;color:${esHoy?'#1d4ed8':'#374151'}">${dia} ${sem}</td>
-                    <td style="text-align:center;padding:4px 2px;">${fase}</td>
-                    ${fmtM(mareas[0])}${fmtM(mareas[1])}${fmtM(mareas[2])}${fmtM(mareas[3])}
-                    <td style="text-align:center;padding:4px 2px;">
-                        <span style="color:${coefColor};font-weight:bold;">${coef}</span><br>
-                        <span style="font-size:12px;">${peces}</span>
-                    </td>
-                </tr>`;
-        }
-
-        html += '</tbody></table>';
-        cont.innerHTML = html;
-    },
-
-    actualizarMesLabel() {
-        const fecha = new Date();
-        fecha.setMonth(fecha.getMonth() + this.mesOffset);
-        const label = fecha.toLocaleDateString('es',{month:'long',year:'numeric'});
-        const el = document.getElementById('marine-mes-label');
-        if (el) el.textContent = label.charAt(0).toUpperCase() + label.slice(1);
-    },
 
     // ── FAVORITOS ─────────────────────────────────────────────────────────────
 
