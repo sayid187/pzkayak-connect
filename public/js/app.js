@@ -49,31 +49,61 @@ const pzKayakApp = {
     
     initNavigation() {
         const navItems = document.querySelectorAll('.nav-item');
-        const pages = document.querySelectorAll('.page');
-        
-        navItems.forEach(item => {
-            item.addEventListener('click', () => {
-                const targetPage = item.dataset.page;
-                
-                navItems.forEach(navItem => navItem.classList.remove('active'));
-                item.classList.add('active');
-                
-                pages.forEach(page => {
-                    page.classList.remove('active');
-                    if (page.id === targetPage) {
-                        page.classList.add('active');
-                        this.onPageChange(targetPage);
-                    }
-                });
+        const pages    = document.querySelectorAll('.page');
+
+        const goToPage = (targetPage) => {
+            if (!targetPage) return;
+
+            // Check if user is logged in — only allow if auth-page is not active
+            const authActive = document.getElementById('auth-page')?.classList.contains('active');
+            if (authActive) return;
+
+            navItems.forEach(n => n.classList.remove('active'));
+            const activeNav = document.querySelector(`.nav-item[data-page="${targetPage}"]`);
+            if (activeNav) activeNav.classList.add('active');
+
+            pages.forEach(page => {
+                page.classList.remove('active');
+                if (page.id === targetPage) {
+                    page.classList.add('active');
+                }
             });
+
+            // Scroll to top
+            const main = document.querySelector('main') || document.querySelector('.app-container');
+            if (main) main.scrollTo({ top: 0, behavior: 'instant' });
+            window.scrollTo({ top: 0, behavior: 'instant' });
+
+            // Update URL hash
+            history.replaceState(null, '', '#' + targetPage);
+
+            this.onPageChange(targetPage);
+        };
+
+        navItems.forEach(item => {
+            item.addEventListener('click', () => goToPage(item.dataset.page));
         });
-        
+
+        // Restore page from URL hash on load
+        const hash = window.location.hash.replace('#', '');
+        const validPages = Array.from(pages).map(p => p.id);
+        if (hash && validPages.includes(hash)) {
+            setTimeout(() => goToPage(hash), 100);
+        }
+
+        // Handle browser back/forward
+        window.addEventListener('popstate', () => {
+            const h = window.location.hash.replace('#', '');
+            if (h && validPages.includes(h)) goToPage(h);
+        });
+
         const settingsBtn = document.getElementById('settings-btn');
         if (settingsBtn) {
-            settingsBtn.addEventListener('click', () => {
-                this.navigateToPage('profile-page');
-            });
+            settingsBtn.addEventListener('click', () => this.navigateToPage('profile-page'));
         }
+
+        // expose goToPage globally
+        window._goToPage = goToPage;
     },
     
     initModals() {
@@ -202,7 +232,6 @@ const pzKayakApp = {
     
     syncOfflineData() {
         console.log('Sincronizando datos offline...');
-        this.showNotification('Datos offline sincronizados', 'success');
     },
     
     updateAllData() {
@@ -245,7 +274,7 @@ const pzKayakApp = {
     },
     
     showNotification(message, type = 'success') {
-        toast.info(message);
+        toast(message, type);
     }
 };
 
