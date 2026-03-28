@@ -31,11 +31,11 @@ const pzKayakApp = {
         const pages    = document.querySelectorAll('.page');
 
         const scrollTop = () => {
-            // Scroll después del render del módulo
-            setTimeout(() => {
-                document.documentElement.scrollTop = 0;
-                document.body.scrollTop = 0;
-            }, 50);
+            // Múltiples intentos para cubrir renders lentos
+            document.documentElement.scrollTop = 0;
+            setTimeout(() => { document.documentElement.scrollTop = 0; }, 50);
+            setTimeout(() => { document.documentElement.scrollTop = 0; }, 150);
+            setTimeout(() => { document.documentElement.scrollTop = 0; }, 300);
         };
 
         const goToPage = (targetPage) => {
