@@ -1,43 +1,22 @@
 /**
  * PzKayak Connect - Módulo Principal
- * Responsable de inicializar y coordinar todos los módulos
  */
-
 const pzKayakApp = {
-    // Estado de la aplicación
     isOnline: navigator.onLine,
     
-    // Inicializar aplicación
     async init() {
         console.log('Inicializando la aplicación PzKayak Connect...');
-        
         this.setupEventListeners();
         await this.initModules();
         this.showWelcomeMessage();
-        
         console.log('Inicialización de PzKayak Connect completada');
     },
     
     setupEventListeners() {
-        window.addEventListener('online', () => {
-            this.isOnline = true;
-            this.updateConnectionStatus();
-        });
-        
-        window.addEventListener('offline', () => {
-            this.isOnline = false;
-            this.updateConnectionStatus();
-        });
-        
-        document.addEventListener('DOMContentLoaded', () => {
-            this.onDOMLoaded();
-        });
-        
-        document.addEventListener('visibilitychange', () => {
-            if (!document.hidden) {
-                this.updateAllData();
-            }
-        });
+        window.addEventListener('online',  () => { this.isOnline = true;  this.updateConnectionStatus(); });
+        window.addEventListener('offline', () => { this.isOnline = false; this.updateConnectionStatus(); });
+        document.addEventListener('DOMContentLoaded', () => this.onDOMLoaded());
+        document.addEventListener('visibilitychange', () => { if (!document.hidden) this.updateAllData(); });
     },
     
     onDOMLoaded() {
@@ -51,233 +30,143 @@ const pzKayakApp = {
         const navItems = document.querySelectorAll('.nav-item');
         const pages    = document.querySelectorAll('.page');
 
+        const scrollTop = () => {
+            // Scroll después del render del módulo
+            setTimeout(() => {
+                document.documentElement.scrollTop = 0;
+                document.body.scrollTop = 0;
+            }, 50);
+        };
+
         const goToPage = (targetPage) => {
             if (!targetPage) return;
-
-            // Check if user is logged in — only allow if auth-page is not active
-            const authActive = document.getElementById('auth-page')?.classList.contains('active');
-            if (authActive) return;
+            if (document.getElementById('auth-page')?.classList.contains('active')) return;
 
             navItems.forEach(n => n.classList.remove('active'));
-            const activeNav = document.querySelector(`.nav-item[data-page="${targetPage}"]`);
-            if (activeNav) activeNav.classList.add('active');
+            document.querySelector(`.nav-item[data-page="${targetPage}"]`)?.classList.add('active');
 
             pages.forEach(page => {
                 page.classList.remove('active');
-                if (page.id === targetPage) {
-                    page.classList.add('active');
-                }
+                if (page.id === targetPage) page.classList.add('active');
             });
 
-            // Scroll to top
-            requestAnimationFrame(() => {
-                document.documentElement.scrollTop = 0;
-                document.body.scrollTop = 0;
-                window.scrollTo(0, 0);
-            });
-
-            // Update URL hash
             history.replaceState(null, '', '#' + targetPage);
-
             this.onPageChange(targetPage);
+            scrollTop();
         };
 
-        navItems.forEach(item => {
-            item.addEventListener('click', () => goToPage(item.dataset.page));
-        });
+        navItems.forEach(item => item.addEventListener('click', () => goToPage(item.dataset.page)));
 
-        // Restore page from URL hash — deferred until after auth completes
+        // Hash restore — espera a que el auth complete
         const hash = window.location.hash.replace('#', '');
         const validPages = Array.from(pages).map(p => p.id);
         window._pendingHash = (hash && validPages.includes(hash) && hash !== 'auth-page') ? hash : null;
 
-        // Handle browser back/forward
         window.addEventListener('popstate', () => {
             const h = window.location.hash.replace('#', '');
             if (h && validPages.includes(h)) goToPage(h);
         });
 
-        const settingsBtn = document.getElementById('settings-btn');
-        if (settingsBtn) {
-            settingsBtn.addEventListener('click', () => this.navigateToPage('profile-page'));
-        }
-
-        // expose goToPage globally
+        document.getElementById('settings-btn')?.addEventListener('click', () => this.navigateToPage('profile-page'));
         window._goToPage = goToPage;
     },
     
     initModals() {
-        const notificationBtn = document.getElementById('notification-btn');
-        const notificationModal = document.getElementById('notification-modal');
+        const notificationBtn        = document.getElementById('notification-btn');
+        const notificationModal      = document.getElementById('notification-modal');
         const closeNotificationModal = document.getElementById('close-notification-modal');
-        
         if (notificationBtn && notificationModal && closeNotificationModal) {
-            notificationBtn.addEventListener('click', () => {
-                notificationModal.classList.remove('hidden');
-            });
-            
-            closeNotificationModal.addEventListener('click', () => {
-                notificationModal.classList.add('hidden');
-            });
-            
-            notificationModal.addEventListener('click', (e) => {
-                if (e.target === notificationModal) {
-                    notificationModal.classList.add('hidden');
-                }
-            });
+            notificationBtn.addEventListener('click',        () => notificationModal.classList.remove('hidden'));
+            closeNotificationModal.addEventListener('click', () => notificationModal.classList.add('hidden'));
+            notificationModal.addEventListener('click', e => { if (e.target === notificationModal) notificationModal.classList.add('hidden'); });
         }
     },
     
     initFormValidation() {
-        const forms = document.querySelectorAll('form');
-        
-        forms.forEach(form => {
-            form.addEventListener('submit', (e) => {
-                const requiredFields = form.querySelectorAll('[required]');
+        document.querySelectorAll('form').forEach(form => {
+            form.addEventListener('submit', e => {
                 let isValid = true;
-                
-                requiredFields.forEach(field => {
-                    if (!field.value.trim()) {
-                        isValid = false;
-                        this.highlightInvalidField(field);
-                    } else {
-                        this.removeHighlight(field);
-                    }
+                form.querySelectorAll('[required]').forEach(field => {
+                    if (!field.value.trim()) { isValid = false; this.highlightInvalidField(field); }
+                    else this.removeHighlight(field);
                 });
-                
-                if (!isValid) {
-                    e.preventDefault();
-                    this.showNotification('Por favor, completa todos los campos obligatorios', 'error');
-                }
+                if (!isValid) { e.preventDefault(); this.showNotification('Por favor, completa todos los campos obligatorios', 'error'); }
             });
         });
     },
     
     initOfflineStorage() {
         if (typeof Storage !== 'undefined') {
-            console.log('El navegador soporta almacenamiento local');
-            
-            const isFirstTime = !localStorage.getItem('pzkayak_first_time');
-            
-            if (isFirstTime) {
+            if (!localStorage.getItem('pzkayak_first_time')) {
                 localStorage.setItem('pzkayak_first_time', 'false');
                 localStorage.setItem('pzkayak_version', '1.0.0');
             }
-        } else {
-            console.warn('El navegador no soporta almacenamiento local, algunas funciones pueden verse afectadas');
-            this.showNotification('Almacenamiento local no soportado, algunas funciones pueden verse afectadas', 'warning');
         }
     },
     
     async initModules() {
-        if (typeof weatherModule !== 'undefined') weatherModule.init();
-        if (typeof tripTracking !== 'undefined') await tripTracking.init();
-        if (typeof catchLog !== 'undefined') await catchLog.init();
+        if (typeof weatherModule   !== 'undefined') weatherModule.init();
+        if (typeof tripTracking    !== 'undefined') await tripTracking.init();
+        if (typeof catchLog        !== 'undefined') await catchLog.init();
         if (typeof communityModule !== 'undefined') communityModule.init();
-        if (typeof safetyModule !== 'undefined') await safetyModule.init();
-        if (typeof profileModule !== 'undefined') await profileModule.init();
-        if (typeof legalModule !== 'undefined') legalModule.init();
-        if (typeof marineModule !== 'undefined') await marineModule.init();
+        if (typeof safetyModule    !== 'undefined') await safetyModule.init();
+        if (typeof profileModule   !== 'undefined') await profileModule.init();
+        if (typeof legalModule     !== 'undefined') legalModule.init();
+        if (typeof marineModule    !== 'undefined') await marineModule.init();
     },
     
     onPageChange(pageId) {
-        console.log(`Cambiando a la página: ${pageId}`);
-        
         switch (pageId) {
-            case 'dashboard-page':
-                if (typeof weatherModule !== 'undefined') weatherModule.updateWeatherDisplay();
-                break;
-            case 'trip-page':
-                if (typeof tripTracking !== 'undefined') tripTracking.updateUI();
-                break;
-            case 'catch-page':
-                if (typeof catchLog !== 'undefined') catchLog.loadCatches().then(() => catchLog.updateCatchList());
-                break;
-            case 'community-page':
-                if (typeof communityModule !== 'undefined') communityModule.refreshLocations();
-                break;
-            case 'safety-page':
-                if (typeof safetyModule !== 'undefined') safetyModule.updateCurrentLocation();
-                break;
-            case 'marine-page':
-                if (typeof marineModule !== 'undefined') marineModule.refresh();
-                break;
-            case 'regulations-page':
-                if (typeof legalModule !== 'undefined') legalModule.renderZona(legalModule.zonaActual);
-                break;
-            case 'profile-page':
-                if (typeof profileModule !== 'undefined') profileModule.renderEstadisticas();
-                break;
+            case 'dashboard-page':   if (typeof weatherModule   !== 'undefined') weatherModule.updateWeatherDisplay(); break;
+            case 'trip-page':        if (typeof tripTracking    !== 'undefined') tripTracking.updateUI(); break;
+            case 'catch-page':       if (typeof catchLog        !== 'undefined') catchLog.loadCatches().then(() => catchLog.updateCatchList()); break;
+            case 'community-page':   if (typeof communityModule !== 'undefined') communityModule.refreshLocations(); break;
+            case 'safety-page':      if (typeof safetyModule    !== 'undefined') safetyModule.updateCurrentLocation(); break;
+            case 'marine-page':      if (typeof marineModule    !== 'undefined') marineModule.refresh(); break;
+            case 'regulations-page': if (typeof legalModule     !== 'undefined') legalModule.renderZona(legalModule.zonaActual); break;
+            case 'profile-page':     if (typeof profileModule   !== 'undefined') profileModule.renderEstadisticas(); break;
         }
     },
     
     navigateToPage(pageId) {
-        const navItem = document.querySelector(`.nav-item[data-page="${pageId}"]`);
-        if (navItem) navItem.click();
+        document.querySelector(`.nav-item[data-page="${pageId}"]`)?.click();
     },
     
     updateConnectionStatus() {
-        console.log(`Estado de red: ${this.isOnline ? 'En línea' : 'Desconectado'}`);
-        
-        const statusIndicators = document.querySelectorAll('.connection-status');
-        
-        statusIndicators.forEach(indicator => {
-            indicator.className = `connection-status inline-block w-3 h-3 rounded-full mr-1 ${this.isOnline ? 'bg-green-500' : 'bg-red-500'}`;
+        document.querySelectorAll('.connection-status').forEach(ind => {
+            ind.className = `connection-status inline-block w-3 h-3 rounded-full mr-1 ${this.isOnline ? 'bg-green-500' : 'bg-red-500'}`;
         });
-        
-        if (this.isOnline) {
-            this.syncOfflineData();
-        }
+        if (this.isOnline) this.syncOfflineData();
     },
     
-    syncOfflineData() {
-        console.log('Sincronizando datos offline...');
-    },
+    syncOfflineData() { console.log('Sincronizando datos offline...'); },
     
     updateAllData() {
         if (!this.isOnline) return;
-        
-        console.log('Actualizando todos los datos...');
-        
-        if (typeof weatherModule !== 'undefined') weatherModule.refreshWeatherData();
-        if (typeof safetyModule !== 'undefined') safetyModule.updateCurrentLocation();
+        if (typeof weatherModule   !== 'undefined') weatherModule.refreshWeatherData();
+        if (typeof safetyModule    !== 'undefined') safetyModule.updateCurrentLocation();
         if (typeof communityModule !== 'undefined') communityModule.refreshLocations();
     },
     
     highlightInvalidField(field) {
-        field.classList.add('border-red-500');
-        field.classList.add('focus:ring-red-500');
-        
-        let errorElement = field.nextElementSibling;
-        
-        if (!errorElement || !errorElement.classList.contains('error-message')) {
-            errorElement = document.createElement('p');
-            errorElement.className = 'error-message text-red-500 text-xs mt-1';
-            field.parentNode.insertBefore(errorElement, field.nextSibling);
+        field.classList.add('border-red-500', 'focus:ring-red-500');
+        let err = field.nextElementSibling;
+        if (!err?.classList.contains('error-message')) {
+            err = document.createElement('p');
+            err.className = 'error-message text-red-500 text-xs mt-1';
+            field.parentNode.insertBefore(err, field.nextSibling);
         }
-        
-        errorElement.textContent = 'Este campo es obligatorio';
+        err.textContent = 'Este campo es obligatorio';
     },
     
     removeHighlight(field) {
-        field.classList.remove('border-red-500');
-        field.classList.remove('focus:ring-red-500');
-        
-        const errorElement = field.nextElementSibling;
-        if (errorElement && errorElement.classList.contains('error-message')) {
-            errorElement.remove();
-        }
+        field.classList.remove('border-red-500', 'focus:ring-red-500');
+        const err = field.nextElementSibling;
+        if (err?.classList.contains('error-message')) err.remove();
     },
     
-    showWelcomeMessage() {
-        console.log('¡Bienvenido a PzKayak Connect!');
-    },
-    
-    showNotification(message, type = 'success') {
-        toast(message, type);
-    }
+    showWelcomeMessage() { console.log('¡Bienvenido a PzKayak Connect!'); },
+    showNotification(message, type = 'success') { toast(message, type); }
 };
 
-document.addEventListener('DOMContentLoaded', () => {
-    pzKayakApp.init().catch(console.error);
-});
+document.addEventListener('DOMContentLoaded', () => pzKayakApp.init().catch(console.error));
