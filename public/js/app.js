@@ -69,10 +69,14 @@ const pzKayakApp = {
                 }
             });
 
-            // Scroll to top
-            const main = document.querySelector('main') || document.querySelector('.app-container');
-            if (main) main.scrollTo({ top: 0, behavior: 'instant' });
-            window.scrollTo({ top: 0, behavior: 'instant' });
+            // Scroll to top — reset all possible scroll containers
+            window.scrollTo(0, 0);
+            document.documentElement.scrollTop = 0;
+            document.body.scrollTop = 0;
+            const main = document.querySelector('main');
+            if (main) main.scrollTop = 0;
+            const app = document.querySelector('.app-container');
+            if (app) app.scrollTop = 0;
 
             // Update URL hash
             history.replaceState(null, '', '#' + targetPage);
@@ -84,12 +88,10 @@ const pzKayakApp = {
             item.addEventListener('click', () => goToPage(item.dataset.page));
         });
 
-        // Restore page from URL hash on load
+        // Restore page from URL hash — deferred until after auth completes
         const hash = window.location.hash.replace('#', '');
         const validPages = Array.from(pages).map(p => p.id);
-        if (hash && validPages.includes(hash)) {
-            setTimeout(() => goToPage(hash), 100);
-        }
+        window._pendingHash = (hash && validPages.includes(hash) && hash !== 'auth-page') ? hash : null;
 
         // Handle browser back/forward
         window.addEventListener('popstate', () => {

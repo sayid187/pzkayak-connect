@@ -1318,6 +1318,11 @@
             document.getElementById('app-header').classList.remove('hidden');
             document.getElementById('app-nav').classList.remove('hidden');
             iniciarTemporizadorInactividad();
+            // Restore page from hash after login
+            if (window._pendingHash) {
+                setTimeout(() => window._goToPage && window._goToPage(window._pendingHash), 200);
+                window._pendingHash = null;
+            }
         }
 
         async function cerrarSesion(motivo = '') {
