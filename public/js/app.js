@@ -69,14 +69,12 @@ const pzKayakApp = {
                 }
             });
 
-            // Scroll to top — reset all possible scroll containers
-            window.scrollTo(0, 0);
-            document.documentElement.scrollTop = 0;
-            document.body.scrollTop = 0;
-            const main = document.querySelector('main');
-            if (main) main.scrollTop = 0;
-            const app = document.querySelector('.app-container');
-            if (app) app.scrollTop = 0;
+            // Scroll to top
+            requestAnimationFrame(() => {
+                document.documentElement.scrollTop = 0;
+                document.body.scrollTop = 0;
+                window.scrollTo(0, 0);
+            });
 
             // Update URL hash
             history.replaceState(null, '', '#' + targetPage);
