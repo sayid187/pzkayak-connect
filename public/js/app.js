@@ -32,12 +32,18 @@ const pzKayakApp = {
 
         const scrollTop = () => {
             const scroller = document.getElementById('main-scroll');
-            if (scroller) {
-                scroller.scrollTop = 0;
-            } else {
-                document.documentElement.scrollTop = 0;
-                document.body.scrollTop = 0;
-            }
+            // Doble rAF: espera que el módulo termine de renderizar contenido
+            // antes de hacer scroll, para que no lo empuje de nuevo hacia abajo.
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    if (scroller) {
+                        scroller.scrollTop = 0;
+                    } else {
+                        document.documentElement.scrollTop = 0;
+                        document.body.scrollTop = 0;
+                    }
+                });
+            });
         };
 
         const goToPage = (targetPage) => {
@@ -54,6 +60,8 @@ const pzKayakApp = {
 
             history.replaceState(null, '', '#' + targetPage);
             this.onPageChange(targetPage);
+            // El scroll va DESPUÉS de onPageChange para que el módulo
+            // ya haya iniciado su render antes de que resetiemos la posición.
             scrollTop();
         };
 
