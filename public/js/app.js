@@ -32,18 +32,25 @@ const pzKayakApp = {
 
         const scrollTop = () => {
             const scroller = document.getElementById('main-scroll');
-            // Doble rAF: espera que el módulo termine de renderizar contenido
-            // antes de hacer scroll, para que no lo empuje de nuevo hacia abajo.
-            requestAnimationFrame(() => {
-                requestAnimationFrame(() => {
-                    if (scroller) {
-                        scroller.scrollTop = 0;
-                    } else {
-                        document.documentElement.scrollTop = 0;
-                        document.body.scrollTop = 0;
-                    }
-                });
+            if (!scroller) return;
+
+            // Reset inmediato
+            scroller.scrollTop = 0;
+
+            // MutationObserver que mantiene scrollTop = 0 durante 600ms
+            // mientras los módulos async inyectan contenido y empujan el scroll
+            let lockUntil = Date.now() + 600;
+            const obs = new MutationObserver(() => {
+                if (Date.now() < lockUntil) {
+                    scroller.scrollTop = 0;
+                } else {
+                    obs.disconnect();
+                }
             });
+            obs.observe(scroller, { childList: true, subtree: true });
+
+            // Desconectar aunque no haya más mutaciones
+            setTimeout(() => obs.disconnect(), 650);
         };
 
         const goToPage = (targetPage) => {
@@ -59,10 +66,8 @@ const pzKayakApp = {
             });
 
             history.replaceState(null, '', '#' + targetPage);
-            this.onPageChange(targetPage);
-            // El scroll va DESPUÉS de onPageChange para que el módulo
-            // ya haya iniciado su render antes de que resetiemos la posición.
             scrollTop();
+            this.onPageChange(targetPage);
         };
 
         navItems.forEach(item => item.addEventListener('click', () => goToPage(item.dataset.page)));
