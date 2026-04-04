@@ -999,7 +999,22 @@
         const stopTripBtn = document.getElementById('stop-trip-btn');
         const connectionStatus = document.getElementById('connection-status');
         
-        // Navegación principal manejada por app.js (goToPage + scrollTop)
+        // Navegación principal
+        navItems.forEach(item => {
+            item.addEventListener('click', () => {
+                const targetPage = item.dataset.page;
+                
+                navItems.forEach(navItem => navItem.classList.remove('active'));
+                item.classList.add('active');
+                
+                pages.forEach(page => {
+                    page.classList.remove('active');
+                    if (page.id === targetPage) {
+                        page.classList.add('active');
+                    }
+                });
+            });
+        });
         
         // Control de Notificaciones
         if(notificationBtn) notificationBtn.addEventListener('click', () => {
