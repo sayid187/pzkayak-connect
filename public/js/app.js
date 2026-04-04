@@ -3,7 +3,7 @@
  */
 const pzKayakApp = {
     isOnline: navigator.onLine,
-    
+
     async init() {
         console.log('Inicializando la aplicación PzKayak Connect...');
         this.setupEventListeners();
@@ -11,40 +11,41 @@ const pzKayakApp = {
         this.showWelcomeMessage();
         console.log('Inicialización de PzKayak Connect completada');
     },
-    
+
     setupEventListeners() {
         window.addEventListener('online',  () => { this.isOnline = true;  this.updateConnectionStatus(); });
         window.addEventListener('offline', () => { this.isOnline = false; this.updateConnectionStatus(); });
         document.addEventListener('DOMContentLoaded', () => this.onDOMLoaded());
         document.addEventListener('visibilitychange', () => { if (!document.hidden) this.updateAllData(); });
     },
-    
+
     onDOMLoaded() {
         this.initNavigation();
         this.initModals();
         this.initFormValidation();
         this.initOfflineStorage();
     },
-    
+
     initNavigation() {
         const navItems = document.querySelectorAll('.nav-item');
         const pages    = document.querySelectorAll('.page');
 
         const scrollTop = () => {
             const scroller = document.getElementById('main-scroll');
-            // Doble rAF: espera que el módulo termine de renderizar contenido
-            // antes de hacer scroll, para que no lo empuje de nuevo hacia abajo.
-            requestAnimationFrame(() => {
-                requestAnimationFrame(() => {
-                    if (scroller) {
-                        scroller.scrollTop = 0;
-                    } else {
-                        document.documentElement.scrollTop = 0;
-                        document.body.scrollTop = 0;
-                    }
-                });
+            if (!scroller) return;
+            scroller.scrollTop = 0;
+            // MutationObserver: mantiene scrollTop=0 durante 800ms
+            // mientras los módulos inyectan contenido async al DOM
+            const lockUntil = Date.now() + 800;
+            const obs = new MutationObserver(() => {
+                if (Date.now() < lockUntil) scroller.scrollTop = 0;
+                else obs.disconnect();
             });
+            obs.observe(scroller, { childList: true, subtree: true });
+            setTimeout(() => obs.disconnect(), 850);
         };
+        // Exponer globalmente para que el listener inline de index.html también lo use
+        window._scrollToTop = scrollTop;
 
         const goToPage = (targetPage) => {
             if (!targetPage) return;
@@ -59,10 +60,8 @@ const pzKayakApp = {
             });
 
             history.replaceState(null, '', '#' + targetPage);
-            this.onPageChange(targetPage);
-            // El scroll va DESPUÉS de onPageChange para que el módulo
-            // ya haya iniciado su render antes de que resetiemos la posición.
             scrollTop();
+            this.onPageChange(targetPage);
         };
 
         navItems.forEach(item => item.addEventListener('click', () => goToPage(item.dataset.page)));
@@ -80,7 +79,7 @@ const pzKayakApp = {
         document.getElementById('settings-btn')?.addEventListener('click', () => this.navigateToPage('profile-page'));
         window._goToPage = goToPage;
     },
-    
+
     initModals() {
         const notificationBtn        = document.getElementById('notification-btn');
         const notificationModal      = document.getElementById('notification-modal');
@@ -91,7 +90,7 @@ const pzKayakApp = {
             notificationModal.addEventListener('click', e => { if (e.target === notificationModal) notificationModal.classList.add('hidden'); });
         }
     },
-    
+
     initFormValidation() {
         document.querySelectorAll('form').forEach(form => {
             form.addEventListener('submit', e => {
@@ -104,7 +103,7 @@ const pzKayakApp = {
             });
         });
     },
-    
+
     initOfflineStorage() {
         if (typeof Storage !== 'undefined') {
             if (!localStorage.getItem('pzkayak_first_time')) {
@@ -113,7 +112,7 @@ const pzKayakApp = {
             }
         }
     },
-    
+
     async initModules() {
         if (typeof weatherModule   !== 'undefined') weatherModule.init();
         if (typeof tripTracking    !== 'undefined') await tripTracking.init();
@@ -124,7 +123,7 @@ const pzKayakApp = {
         if (typeof legalModule     !== 'undefined') legalModule.init();
         if (typeof marineModule    !== 'undefined') await marineModule.init();
     },
-    
+
     onPageChange(pageId) {
         switch (pageId) {
             case 'dashboard-page':   if (typeof weatherModule   !== 'undefined') weatherModule.updateWeatherDisplay(); break;
@@ -137,27 +136,27 @@ const pzKayakApp = {
             case 'profile-page':     if (typeof profileModule   !== 'undefined') profileModule.renderEstadisticas(); break;
         }
     },
-    
+
     navigateToPage(pageId) {
         document.querySelector(`.nav-item[data-page="${pageId}"]`)?.click();
     },
-    
+
     updateConnectionStatus() {
         document.querySelectorAll('.connection-status').forEach(ind => {
             ind.className = `connection-status inline-block w-3 h-3 rounded-full mr-1 ${this.isOnline ? 'bg-green-500' : 'bg-red-500'}`;
         });
         if (this.isOnline) this.syncOfflineData();
     },
-    
+
     syncOfflineData() { console.log('Sincronizando datos offline...'); },
-    
+
     updateAllData() {
         if (!this.isOnline) return;
         if (typeof weatherModule   !== 'undefined') weatherModule.refreshWeatherData();
         if (typeof safetyModule    !== 'undefined') safetyModule.updateCurrentLocation();
         if (typeof communityModule !== 'undefined') communityModule.refreshLocations();
     },
-    
+
     highlightInvalidField(field) {
         field.classList.add('border-red-500', 'focus:ring-red-500');
         let err = field.nextElementSibling;
@@ -168,13 +167,13 @@ const pzKayakApp = {
         }
         err.textContent = 'Este campo es obligatorio';
     },
-    
+
     removeHighlight(field) {
         field.classList.remove('border-red-500', 'focus:ring-red-500');
         const err = field.nextElementSibling;
         if (err?.classList.contains('error-message')) err.remove();
     },
-    
+
     showWelcomeMessage() { console.log('¡Bienvenido a PzKayak Connect!'); },
     showNotification(message, type = 'success') { toast(message, type); }
 };
