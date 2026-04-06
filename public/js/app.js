@@ -31,15 +31,13 @@ const pzKayakApp = {
         const pages    = document.querySelectorAll('.page');
 
         const scrollTop = () => {
-            requestAnimationFrame(() => {
-                const scroller = document.getElementById('main-scroll');
-                if (scroller) {
-                    scroller.scrollTop = 0;
-                } else {
-                    document.documentElement.scrollTop = 0;
-                    document.body.scrollTop = 0;
-                }
-            });
+            const scroller = document.getElementById('main-scroll');
+            if (scroller) {
+                scroller.scrollTop = 0;
+            } else {
+                document.documentElement.scrollTop = 0;
+                document.body.scrollTop = 0;
+            }
         };
 
         const goToPage = (targetPage) => {
@@ -54,9 +52,15 @@ const pzKayakApp = {
                 if (page.id === targetPage) page.classList.add('active');
             });
 
+            // Reset ANTES de cargar módulo para no heredar posición anterior
+            scrollTop();
+
             history.replaceState(null, '', '#' + targetPage);
             this.onPageChange(targetPage);
-            scrollTop();
+
+            // Doble reset por si el módulo async empuja contenido después del scroll
+            requestAnimationFrame(() => scrollTop());
+            setTimeout(() => scrollTop(), 150);
         };
 
         navItems.forEach(item => item.addEventListener('click', () => goToPage(item.dataset.page)));
