@@ -58,6 +58,135 @@
         body {
             @apply bg-gray-100 font-sans text-dark;
         }
+
+        /* ── RESPONSIVE LAYOUT ──────────────────────────── */
+        /* Mobile: igual que antes */
+        .app-container {
+            max-width: 448px;
+            margin: 0 auto;
+            background: white;
+            min-height: 100vh;
+            position: relative;
+        }
+
+        /* Desktop: sidebar + contenido */
+        @media (min-width: 1024px) {
+            body {
+                background: #f1f5f9 !important;
+            }
+            body.dark {
+                background: #0a0f1a !important;
+            }
+            .app-container {
+                max-width: 100%;
+                display: grid;
+                grid-template-columns: 240px 1fr;
+                grid-template-rows: auto 1fr;
+                grid-template-areas:
+                    "sidebar header"
+                    "sidebar main";
+                min-height: 100vh;
+                background: transparent !important;
+            }
+            /* Header top en desktop */
+            #app-header {
+                grid-area: header;
+                position: sticky;
+                top: 0;
+                border-radius: 0 0 0 0;
+                box-shadow: 0 1px 0 #e5e7eb;
+                background: white !important;
+                display: flex !important;
+            }
+            body.dark #app-header {
+                background: #1e293b !important;
+                box-shadow: 0 1px 0 #334155 !important;
+            }
+            /* Sidebar izquierdo */
+            #app-nav {
+                grid-area: sidebar;
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                bottom: 0 !important;
+                right: auto !important;
+                width: 240px !important;
+                height: 100vh !important;
+                border-top: none !important;
+                border-right: 1px solid #e5e7eb !important;
+                box-shadow: 2px 0 12px rgba(0,0,0,0.06) !important;
+                background: white !important;
+                display: flex !important;
+                flex-direction: column !important;
+                padding-top: 0 !important;
+                overflow-y: auto;
+                z-index: 30 !important;
+            }
+            body.dark #app-nav {
+                background: #1e293b !important;
+                border-right-color: #334155 !important;
+                box-shadow: 2px 0 12px rgba(0,0,0,0.3) !important;
+            }
+            /* Logo en sidebar */
+            #sidebar-brand {
+                display: flex !important;
+            }
+            /* Contenedor de nav items en sidebar */
+            #nav-items-wrap {
+                flex-direction: column !important;
+                width: 100% !important;
+                padding: 8px !important;
+                gap: 2px;
+                overflow-x: visible !important;
+            }
+            /* Nav items verticales */
+            .nav-item {
+                flex-direction: row !important;
+                justify-content: flex-start !important;
+                width: 100% !important;
+                padding: 10px 14px !important;
+                border-radius: 10px !important;
+                min-width: 0 !important;
+                gap: 12px;
+            }
+            .nav-item span {
+                font-size: 13px !important;
+                font-weight: 500 !important;
+                margin-top: 0 !important;
+            }
+            .nav-icon-wrap {
+                width: 28px !important;
+                height: 28px !important;
+                margin-bottom: 0 !important;
+                flex-shrink: 0;
+            }
+            /* Pill indicator lateral en desktop */
+            .nav-item.active .nav-icon-wrap::after {
+                display: none !important;
+            }
+            .nav-item.active {
+                background: rgba(0,102,204,0.08) !important;
+            }
+            body.dark .nav-item.active {
+                background: rgba(96,165,250,0.12) !important;
+            }
+            /* Main scroll en desktop */
+            #main-scroll {
+                grid-area: main;
+                margin-left: 240px;
+                height: calc(100vh - 56px) !important;
+                max-width: 720px;
+                padding: 24px 32px 40px !important;
+            }
+            /* Ocultar scrollbar lateral en nav mobile */
+            #nav-items-wrap { overflow-x: hidden !important; }
+        }
+
+        @media (min-width: 1280px) {
+            #main-scroll {
+                max-width: 800px;
+            }
+        }
         
 
         /* ── TRANSICIONES DE PÁGINA ──────────────────────── */
@@ -203,6 +332,9 @@
         body.dark .border, body.dark .border-gray-300, body.dark .border-gray-200 { border-color: #334155 !important; }
         body.dark .input-field { background: #273549 !important; border-color: #334155 !important; color: #e2e8f0 !important; }
         body.dark select, body.dark textarea { background: #273549 !important; border-color: #334155 !important; color: #e2e8f0 !important; }
+        body.dark #sidebar-brand { border-bottom-color: #334155 !important; }
+        body.dark #sidebar-brand div:first-child { color: #60a5fa !important; }
+        body.dark #sidebar-footer { border-top-color: #334155 !important; }
         body.dark .nav-item { color: #64748b !important; }
         body.dark .nav-item.active { color: #60a5fa !important; }
         body.dark .nav-item.active .nav-icon-wrap::after { background: #60a5fa !important; }
@@ -232,7 +364,7 @@
     </style>
 </head>
 <body>
-    <div class="app-container max-w-md mx-auto bg-white min-h-screen relative">
+    <div class="app-container bg-white min-h-screen relative">
         <header id="app-header" class="bg-white shadow-sm sticky top-0 z-10 hidden">
             <div class="container mx-auto px-4 py-3 flex items-center justify-between">
                 <div class="flex items-center">
@@ -251,7 +383,7 @@
             </div>
         </header>
         
-        <main id="main-scroll" class="container mx-auto px-4 py-2 pb-20" style="height:calc(100dvh - 56px - 48px);overflow-y:auto;-webkit-overflow-scrolling:touch;">
+        <main id="main-scroll" class="container mx-auto px-4 py-2 pb-20 lg:pb-8" style="height:calc(100dvh - 56px - 48px);overflow-y:auto;-webkit-overflow-scrolling:touch;">
             <section id="auth-page" class="page active">
                 <div class="flex flex-col items-center justify-center min-h-[70vh]">
                     <div class="w-full max-w-sm">
@@ -974,7 +1106,15 @@
         </main>
         
         <nav id="app-nav" class="fixed bottom-0 left-0 right-0 z-20 hidden" style="background:white;border-top:1px solid #e5e7eb;box-shadow:0 -2px 12px rgba(0,0,0,0.06);">
-            <div class="max-w-md mx-auto" style="overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;-ms-overflow-style:none;">
+            <!-- Logo solo visible en desktop sidebar -->
+            <div id="sidebar-brand" style="display:none; align-items:center; padding:20px 16px 12px; border-bottom:1px solid #e5e7eb; gap:10px;">
+                <img src="pzlog.png" alt="PzKayak" style="height:36px;width:36px;border-radius:50%;object-fit:cover;">
+                <div>
+                    <div style="font-weight:700;font-size:14px;color:#0066cc;line-height:1.2;">PzKayak</div>
+                    <div style="font-size:11px;color:#6b7280;">Connect</div>
+                </div>
+            </div>
+            <div id="nav-items-wrap" class="max-w-md mx-auto" style="overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;-ms-overflow-style:none;">
                 <div style="display:flex;align-items:stretch;width:100%;padding:0 0 env(safe-area-inset-bottom) 0;">
                     <button class="nav-item active" data-page="dashboard-page">
                         <div class="nav-icon-wrap"><svg viewBox="0 0 24 24"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H5a1 1 0 01-1-1V9.5z"/><path d="M9 21V12h6v9"/></svg></div>
@@ -1009,6 +1149,10 @@
                         <span>Perfil</span>
                     </button>
                 </div>
+            </div>
+            <!-- Versión y dark mode en sidebar footer -->
+            <div id="sidebar-footer" style="display:none; margin-top:auto; padding:16px; border-top:1px solid #e5e7eb;">
+                <div style="font-size:11px;color:#9ca3af;text-align:center;">PzKayak Connect v1.0</div>
             </div>
         </nav>
         
@@ -1092,6 +1236,46 @@
     <script src="js/profileModule.js"></script>
     <script src="js/app.js"></script>
     <script>
+        // ── RESPONSIVE SIDEBAR ─────────────────────────────
+        function applyResponsiveLayout() {
+            const isDesktop = window.innerWidth >= 1024;
+            const brand = document.getElementById('sidebar-brand');
+            const footer = document.getElementById('sidebar-footer');
+            const wrap = document.getElementById('nav-items-wrap');
+            if (brand) brand.style.display = isDesktop ? 'flex' : 'none';
+            if (footer) footer.style.display = isDesktop ? 'block' : 'none';
+            if (wrap) {
+                if (isDesktop) {
+                    wrap.style.display = 'flex';
+                    wrap.style.flexDirection = 'column';
+                    wrap.style.maxWidth = '100%';
+                    wrap.style.overflowX = 'hidden';
+                    const inner = wrap.querySelector('div');
+                    if (inner) {
+                        inner.style.flexDirection = 'column';
+                        inner.style.width = '100%';
+                        inner.style.padding = '0';
+                    }
+                } else {
+                    wrap.style.display = 'block';
+                    wrap.style.maxWidth = '448px';
+                    wrap.style.overflowX = 'auto';
+                    const inner = wrap.querySelector('div');
+                    if (inner) {
+                        inner.style.flexDirection = 'row';
+                        inner.style.width = '100%';
+                    }
+                }
+            }
+            // Dark mode sidebar border
+            if (isDesktop && document.body.classList.contains('dark')) {
+                const nav = document.getElementById('app-nav');
+                if (nav) nav.style.borderTopColor = '#334155';
+            }
+        }
+        window.addEventListener('resize', applyResponsiveLayout);
+        document.addEventListener('DOMContentLoaded', applyResponsiveLayout);
+
         // ── DARK MODE ──────────────────────────────────────
         if (localStorage.getItem('pzkayak_dark') === 'true') document.body.classList.add('dark');
         document.addEventListener('DOMContentLoaded', () => {
