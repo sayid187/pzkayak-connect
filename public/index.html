@@ -164,6 +164,37 @@
         .skeleton {
             @apply animate-pulse bg-gray-200 rounded;
         }
+
+        /* ── DARK MODE ─────────────────────────────────────── */
+        body.dark { background: #0f172a !important; color: #e2e8f0 !important; }
+        body.dark .app-container { background: #0f172a !important; }
+        body.dark header, body.dark #app-header { background: #1e293b !important; border-color: #334155 !important; }
+        body.dark #app-nav { background: #1e293b !important; border-color: #334155 !important; box-shadow: 0 -2px 12px rgba(0,0,0,0.4) !important; }
+        body.dark .card { background: #1e293b !important; color: #e2e8f0 !important; }
+        body.dark .bg-white { background: #1e293b !important; }
+        body.dark .bg-gray-50 { background: #273549 !important; }
+        body.dark .bg-gray-100 { background: #1a2740 !important; }
+        body.dark .text-gray-600, body.dark .text-gray-400 { color: #94a3b8 !important; }
+        body.dark .text-dark { color: #e2e8f0 !important; }
+        body.dark .shadow-sm, body.dark .shadow-md { box-shadow: 0 1px 8px rgba(0,0,0,0.5) !important; }
+        body.dark .border, body.dark .border-gray-300, body.dark .border-gray-200 { border-color: #334155 !important; }
+        body.dark .input-field { background: #273549 !important; border-color: #334155 !important; color: #e2e8f0 !important; }
+        body.dark select, body.dark textarea { background: #273549 !important; border-color: #334155 !important; color: #e2e8f0 !important; }
+        body.dark .nav-item { color: #64748b !important; }
+        body.dark .nav-item.active { color: #60a5fa !important; }
+        body.dark .nav-item.active .nav-icon-wrap { background: rgba(96,165,250,0.15) !important; }
+        body.dark .bg-blue-100  { background: #1e3a5f !important; }
+        body.dark .bg-green-100 { background: #14532d !important; }
+        body.dark .bg-orange-100{ background: #431407 !important; }
+        body.dark .bg-purple-100{ background: #3b0764 !important; }
+        body.dark .bg-red-100   { background: #450a0a !important; }
+        body.dark .bg-gray-200  { background: #334155 !important; }
+        body.dark .bg-gray-800  { background: #0f172a !important; }
+        body.dark #main-scroll  { background: #0f172a !important; }
+        body.dark table thead tr { background: #273549 !important; }
+        body.dark .tab { color: #94a3b8 !important; }
+        body.dark .tab.active { color: #60a5fa !important; border-color: #60a5fa !important; }
+        body.dark h1, body.dark h2, body.dark h3, body.dark p, body.dark span, body.dark label { color: inherit; }
     </style>
 </head>
 <body>
@@ -822,6 +853,16 @@
                         <div class="space-y-3">
                             <div class="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
                                 <div class="flex items-center">
+                                    <div class="bg-gray-800 p-2 rounded-full mr-3"><i class="fa fa-moon-o text-yellow-400"></i></div>
+                                    <p class="font-medium">Modo Oscuro</p>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" id="dark-mode-toggle" class="sr-only peer">
+                                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                                </label>
+                            </div>
+                            <div class="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
+                                <div class="flex items-center">
                                     <div class="bg-blue-100 p-2 rounded-full mr-3"><i class="fa fa-bell-o text-primary"></i></div>
                                     <p class="font-medium">Notificaciones</p>
                                 </div>
@@ -993,6 +1034,19 @@
     <script src="js/profileModule.js"></script>
     <script src="js/app.js"></script>
     <script>
+        // ── DARK MODE ──────────────────────────────────────
+        if (localStorage.getItem('pzkayak_dark') === 'true') document.body.classList.add('dark');
+        document.addEventListener('DOMContentLoaded', () => {
+            const toggle = document.getElementById('dark-mode-toggle');
+            if (toggle) {
+                toggle.checked = localStorage.getItem('pzkayak_dark') === 'true';
+                toggle.addEventListener('change', () => {
+                    document.body.classList.toggle('dark', toggle.checked);
+                    localStorage.setItem('pzkayak_dark', toggle.checked);
+                });
+            }
+        });
+
         // Elementos del DOM
         const pages = document.querySelectorAll('.page');
         const navItems = document.querySelectorAll('.nav-item');
