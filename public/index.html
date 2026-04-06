@@ -1076,6 +1076,13 @@
                         page.classList.add('active');
                     }
                 });
+
+                const scroller = document.getElementById('main-scroll');
+                if (scroller) {
+                    scroller.scrollTop = 0;
+                    requestAnimationFrame(() => { scroller.scrollTop = 0; });
+                    setTimeout(() => { scroller.scrollTop = 0; }, 150);
+                }
             });
         });
         
