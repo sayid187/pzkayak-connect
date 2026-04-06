@@ -31,13 +31,15 @@ const pzKayakApp = {
         const pages    = document.querySelectorAll('.page');
 
         const scrollTop = () => {
-            const scroller = document.getElementById('main-scroll');
-            if (scroller) {
-                scroller.scrollTop = 0;
-            } else {
-                document.documentElement.scrollTop = 0;
-                document.body.scrollTop = 0;
-            }
+            requestAnimationFrame(() => {
+                const scroller = document.getElementById('main-scroll');
+                if (scroller) {
+                    scroller.scrollTop = 0;
+                } else {
+                    document.documentElement.scrollTop = 0;
+                    document.body.scrollTop = 0;
+                }
+            });
         };
 
         const goToPage = (targetPage) => {
