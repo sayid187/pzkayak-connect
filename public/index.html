@@ -83,8 +83,17 @@
         .nav-item.active {
             @apply text-primary;
         }
+        .nav-icon-wrap {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 28px;
+            border-radius: 14px;
+            transition: background 0.2s;
+        }
         .nav-item.active .nav-icon-wrap {
-            background: rgba(59,130,246,0.12);
+            background: rgba(59,130,246,0.15);
         }
         .scrollbar-hide::-webkit-scrollbar { display: none; }
 
@@ -1013,14 +1022,6 @@
                         page.classList.add('active');
                     }
                 });
-
-                // Scroll al top al cambiar de página
-                const scroller = document.getElementById('main-scroll');
-                if (scroller) {
-                    scroller.scrollTop = 0;
-                    requestAnimationFrame(() => { scroller.scrollTop = 0; });
-                    setTimeout(() => { scroller.scrollTop = 0; }, 150);
-                }
             });
         });
         
