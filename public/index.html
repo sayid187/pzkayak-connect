@@ -89,7 +89,7 @@
                 background: transparent !important;
             }
             /* Header top en desktop */
-            #app-header {
+            #app-header:not(.hidden) {
                 grid-area: header;
                 position: sticky;
                 top: 0;
@@ -103,7 +103,7 @@
                 box-shadow: 0 1px 0 #334155 !important;
             }
             /* Sidebar izquierdo */
-            #app-nav {
+            #app-nav:not(.hidden) {
                 grid-area: sidebar;
                 position: fixed !important;
                 top: 0 !important;
@@ -128,7 +128,7 @@
                 box-shadow: 2px 0 12px rgba(0,0,0,0.3) !important;
             }
             /* Logo en sidebar */
-            #sidebar-brand {
+            #app-nav:not(.hidden) #sidebar-brand {
                 display: flex !important;
             }
             /* Contenedor de nav items en sidebar */
@@ -170,13 +170,45 @@
             body.dark .nav-item.active {
                 background: rgba(96,165,250,0.12) !important;
             }
-            /* Main scroll en desktop */
+            /* Main scroll en desktop - con sidebar */
+            #app-nav:not(.hidden) ~ * #main-scroll,
             #main-scroll {
                 grid-area: main;
                 margin-left: 240px;
                 height: calc(100vh - 56px) !important;
                 max-width: 720px;
                 padding: 24px 32px 40px !important;
+            }
+            /* Auth page en desktop: sin sidebar, centrado */
+            body.auth-mode #main-scroll {
+                margin-left: 0 !important;
+                max-width: 100% !important;
+                height: 100vh !important;
+                padding: 0 !important;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: linear-gradient(135deg, #0f172a 0%, #0c2340 50%, #0f172a 100%) !important;
+            }
+            body.auth-mode .app-container {
+                display: block !important;
+                background: transparent !important;
+            }
+            body.auth-mode #auth-page {
+                width: 100%;
+                max-width: 420px;
+                background: white;
+                border-radius: 20px;
+                padding: 40px;
+                box-shadow: 0 25px 60px rgba(0,0,0,0.4);
+                margin: 0 auto;
+            }
+            body.dark.auth-mode #auth-page {
+                background: #1e293b;
+                box-shadow: 0 25px 60px rgba(0,0,0,0.6);
+            }
+            body.auth-mode #auth-page .min-h-\[70vh\] {
+                min-height: unset !important;
             }
             /* Ocultar scrollbar lateral en nav mobile */
             #nav-items-wrap { overflow-x: hidden !important; }
@@ -1236,6 +1268,11 @@
     <script src="js/profileModule.js"></script>
     <script src="js/app.js"></script>
     <script>
+        // Aplicar auth-mode inicial
+        if (document.getElementById('auth-page')?.classList.contains('active')) {
+            document.body.classList.add('auth-mode');
+        }
+
         // ── RESPONSIVE SIDEBAR ─────────────────────────────
         function applyResponsiveLayout() {
             const isDesktop = window.innerWidth >= 1024;
@@ -1625,6 +1662,7 @@
 
         function entrarApp(user) {
             document.getElementById('auth-page').classList.remove('active');
+            document.body.classList.remove('auth-mode');
             document.getElementById('dashboard-page').classList.add('active');
             document.querySelector('.nav-item[data-page="dashboard-page"]').classList.add('active');
             document.getElementById('app-header').classList.remove('hidden');
@@ -1642,6 +1680,7 @@
             await db.auth.signOut();
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
             document.getElementById('auth-page').classList.add('active');
+            document.body.classList.add('auth-mode');
             document.getElementById('app-header').classList.add('hidden');
             document.getElementById('app-nav').classList.add('hidden');
             if (motivo) {
