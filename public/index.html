@@ -1208,13 +1208,48 @@
         </nav>
         
         <div id="notification-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-start justify-center pt-20">
-            <div class="bg-white rounded-xl w-full max-w-md mx-4 max-h-[80vh] overflow-y-auto">
-                <div class="p-4 border-b border-gray-200 flex items-center justify-between">
+            <div class="bg-white rounded-xl w-full max-w-md mx-4 flex flex-col max-h-[80vh]">
+                <div class="p-4 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
                     <h2 class="text-lg font-semibold">Notificaciones</h2>
                     <button id="close-notification-modal" class="text-gray-600 hover:text-danger transition-colors">
                         <i class="fa fa-times text-xl"></i>
                     </button>
                 </div>
+                
+                <div id="notif-list" class="p-4 space-y-4 overflow-y-auto" style="max-height: 60vh;">
+                    <div class="flex items-start p-3 bg-blue-50 rounded-lg">
+                        <div class="bg-blue-100 p-2 rounded-full mr-3 mt-1">
+                            <i class="fa fa-bell text-primary"></i>
+                        </div>
+                        <div class="flex-1">
+                            <p class="font-medium">Alerta de Clima</p>
+                            <p class="text-sm text-gray-600 mb-1">Vientos fuertes mañana, no se recomienda salir a pescar.</p>
+                            <p class="text-xs text-gray-500">Hace 10 min</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start p-3 bg-green-50 rounded-lg">
+                        <div class="bg-green-100 p-2 rounded-full mr-3 mt-1">
+                            <i class="fa fa-users text-secondary"></i>
+                        </div>
+                        <div class="flex-1">
+                            <p class="font-medium">Invitación a Actividad</p>
+                            <p class="text-sm text-gray-600 mb-1">Te han invitado a "Pesca de Fin de Semana".</p>
+                            <p class="text-xs text-gray-500">Hace 2 horas</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start p-3 bg-gray-50 rounded-lg">
+                        <div class="bg-gray-100 p-2 rounded-full mr-3 mt-1">
+                            <i class="fa fa-info-circle text-gray-600"></i>
+                        </div>
+                        <div class="flex-1">
+                            <p class="font-medium">Notificación del Sistema</p>
+                            <p class="text-sm text-gray-600 mb-1">¡Bienvenido a PzKayak Connect!</p>
+                            <p class="text-xs text-gray-500">Ayer</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
                 <div class="p-4 space-y-4">
                     <div class="flex items-start p-3 bg-blue-50 rounded-lg">
                         <div class="bg-blue-100 p-2 rounded-full mr-3 mt-1">
