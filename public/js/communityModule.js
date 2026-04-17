@@ -137,6 +137,7 @@ const communityModule = {
     // ── SOLICITUDES DE AMISTAD ────────────────────────────────────────────────
 
     async enviarSolicitud(pescador) {
+        // Verificar que no existe ya
         if (this.amigos.some(a => a.amigo_id === pescador.id)) {
             toast(`${pescador.nombre} ya es tu amigo`, 'info'); return;
         }
@@ -155,23 +156,11 @@ const communityModule = {
             }
             if (error) throw error;
 
-            // Agregar a enviadas localmente para control interno
+            // Agregar a enviadas localmente para actualizar UI
             this.solicitudesEnviadas.push({ receptor_id: pescador.id, estado: 'pendiente' });
-
-            // Inyectar visualmente en la lista de amigos como "pendiente"
-            this.amigos.push({
-                id: 'temp_' + Date.now(),
-                amigo_id: pescador.id,
-                nombre: pescador.nombre,
-                online: false,
-                distancia: pescador.distancia,
-                estado: 'pendiente'
-            });
-
-            // Quitar de cercanos y actualizar vistas
+            // Quitar de cercanos
             this.cercanos = this.cercanos.filter(p => p.id !== pescador.id);
             this.renderCercanos();
-            this.renderAmigos(); 
             toast(`✅ Solicitud enviada a ${pescador.nombre}`, 'success');
         } catch (err) {
             toast('Error al enviar solicitud: ' + err.message, 'error');
@@ -327,15 +316,13 @@ const communityModule = {
     },
 
     async eliminarAmigo(amigo) {
-        const msj = amigo.estado === 'pendiente' ? `¿Cancelar solicitud a ${amigo.nombre}?` : `¿Eliminar a ${amigo.nombre} de tus amigos?`;
-        if (!await confirmar(msj)) return;
+        if (!await confirmar(`¿Eliminar a ${amigo.nombre} de tus amigos?`)) return;
         try {
             await this.eliminarAmigoDb(amigo.amigo_id);
             this.amigos = this.amigos.filter(a => a.id !== amigo.id);
-            this.solicitudesEnviadas = this.solicitudesEnviadas.filter(s => s.receptor_id !== amigo.amigo_id);
             await this.cargarCercanos();
             this.render();
-            toast(amigo.estado === 'pendiente' ? `Solicitud cancelada` : `${amigo.nombre} eliminado`, 'info');
+            toast(`${amigo.nombre} eliminado`, 'info');
         } catch (err) { toast('Error: ' + err.message, 'error'); }
     },
 
@@ -552,7 +539,7 @@ const communityModule = {
         cont.scrollTop = cont.scrollHeight;
     },
 
-    escaparHtml(t) { return t.replace(/&/g,'&').replace(/</g,'<').replace(/>/g,'>').replace(/"/g,'"'); },
+    escaparHtml(t) { return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); },
 
     // ── UTILIDADES ────────────────────────────────────────────────────────────
 
@@ -620,9 +607,8 @@ const communityModule = {
 
     renderContadorOnline() {
         const el=document.getElementById('community-online-count'); if(!el)return;
-        const validos = this.amigos.filter(a => a.estado !== 'pendiente');
-        const n=validos.filter(a=>a.online).length;
-        el.textContent=n>0?`${n} amigo${n!==1?'s':''} en línea`:`${validos.length} amigo${validos.length!==1?'s':''}`;
+        const n=this.amigos.filter(a=>a.online).length;
+        el.textContent=n>0?`${n} amigo${n!==1?'s':''} en línea`:`${this.amigos.length} amigo${this.amigos.length!==1?'s':''}`;
     },
 
     renderAmigos() {
@@ -636,31 +622,22 @@ const communityModule = {
             const item=document.createElement('div');
             item.className='flex items-center p-3 bg-gray-50 rounded-lg gap-3';
             const dist=amigo.distancia!==null?`· ${amigo.distancia} km`:'';
-            
             item.innerHTML=`
                 <div class="w-10 h-10 ${this.colorPara(amigo.nombre)} rounded-full flex items-center justify-center flex-shrink-0 font-bold text-sm relative">
                     ${amigo.nombre.charAt(0).toUpperCase()}
-                    ${amigo.estado !== 'pendiente' ? `<span class="absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${amigo.online?'bg-green-500':'bg-gray-300'}"></span>` : ''}
+                    <span class="absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${amigo.online?'bg-green-500':'bg-gray-300'}"></span>
                 </div>
                 <div class="flex-1 min-w-0">
                     <p class="font-medium">${amigo.nombre}</p>
-                    ${amigo.estado === 'pendiente' 
-                        ? `<p class="text-xs font-semibold text-orange-500">Pendiente de aceptación...</p>`
-                        : `<p class="text-xs text-gray-500">${amigo.online?'En línea':'Desconectado'} ${dist}</p>`
-                    }
+                    <p class="text-xs text-gray-500">${amigo.online?'En línea':'Desconectado'} ${dist}</p>
                 </div>
                 <div class="flex gap-2">
-                    ${amigo.estado !== 'pendiente' ? `
                     <button class="w-8 h-8 rounded-full bg-white border border-gray-200 flex items-center justify-center text-primary hover:bg-blue-50 btn-chat" title="Chat"><i class="fa fa-comment"></i></button>
                     <button class="w-8 h-8 rounded-full bg-white border border-gray-200 flex items-center justify-center text-primary hover:bg-blue-50 btn-ubicar" title="Ver en mapa"><i class="fa fa-map-marker"></i></button>
-                    ` : ''}
-                    <button class="w-8 h-8 rounded-full bg-white border border-red-200 flex items-center justify-center text-red-400 hover:bg-red-50 btn-eliminar" title="${amigo.estado === 'pendiente' ? 'Cancelar solicitud' : 'Eliminar'}"><i class="fa fa-times"></i></button>
+                    <button class="w-8 h-8 rounded-full bg-white border border-red-200 flex items-center justify-center text-red-400 hover:bg-red-50 btn-eliminar" title="Eliminar"><i class="fa fa-times"></i></button>
                 </div>`;
-                
-            if(amigo.estado !== 'pendiente') {
-                item.querySelector('.btn-chat').onclick    =()=>this.abrirChat(amigo);
-                item.querySelector('.btn-ubicar').onclick  =()=>this.mostrarUbicacionAmigo(amigo);
-            }
+            item.querySelector('.btn-chat').onclick    =()=>this.abrirChat(amigo);
+            item.querySelector('.btn-ubicar').onclick  =()=>this.mostrarUbicacionAmigo(amigo);
             item.querySelector('.btn-eliminar').onclick=()=>this.eliminarAmigo(amigo);
             cont.appendChild(item);
         });
