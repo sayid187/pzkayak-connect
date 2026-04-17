@@ -789,6 +789,25 @@
                         <div id="friend-list" class="space-y-2"></div>
                     </div>
 
+                    <!-- Switch compartir ubicación -->
+                    <div class="card p-4 mb-4">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div class="bg-blue-100 p-2 rounded-full">
+                                    <i class="fa fa-map-marker text-primary"></i>
+                                </div>
+                                <div>
+                                    <p class="font-medium">Compartir mi ubicación</p>
+                                    <p class="text-xs text-gray-500" id="ubicacion-status-txt">Desactivado — solo tú te ves</p>
+                                </div>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="ubicacion-toggle" class="sr-only peer">
+                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                            </label>
+                        </div>
+                    </div>
+
                     <!-- Pescadores Cercanos -->
                     <div class="card p-4 mb-4">
                         <h2 class="text-lg font-semibold mb-3">Pescadores Cercanos</h2>
