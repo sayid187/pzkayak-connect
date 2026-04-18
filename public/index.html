@@ -1760,6 +1760,30 @@
 
         // Cerrar sesión desde perfil
         window.cerrarSesionApp = () => cerrarSesion();
+
+        // ── SISTEMA DE ALERTAS (TOASTS) AQUÍ ───────────────────────────────────────
+        window.toast = function(mensaje, tipo = 'info') {
+            const el = document.createElement('div');
+            let bgClass = 'bg-blue-500';
+            let icon = 'fa-info-circle';
+            
+            if (tipo === 'error') { bgClass = 'bg-red-500'; icon = 'fa-exclamation-circle'; }
+            else if (tipo === 'success') { bgClass = 'bg-green-500'; icon = 'fa-check-circle'; }
+
+            el.className = `fixed top-4 left-1/2 -translate-x-1/2 ${bgClass} text-white px-4 py-3 rounded-lg shadow-xl z-[100] text-sm flex items-center gap-2 transition-all duration-300 transform translate-y-0 opacity-100`;
+            el.innerHTML = `<i class="fa ${icon} text-lg"></i> <span>${mensaje}</span>`;
+            
+            document.body.appendChild(el);
+
+            setTimeout(() => {
+                el.classList.add('-translate-y-4', 'opacity-0');
+                setTimeout(() => el.remove(), 300);
+            }, 3000);
+        };
+
+        window.toast.error = (msg) => window.toast(msg, 'error');
+        window.toast.success = (msg) => window.toast(msg, 'success');
+        window.toast.info = (msg) => window.toast(msg, 'info');
         
     </script>
 </body>
