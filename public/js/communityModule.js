@@ -91,10 +91,13 @@ const communityModule = {
     async cargarSolicitudesEnviadas() {
         try {
             const { data } = await db.from('solicitudes_amistad')
-                .select('id, receptor_id, estado')
+                .select('id, receptor_id, estado, perfiles!solicitudes_amistad_receptor_id_fkey(nombre)')
                 .eq('emisor_id', this.currentUser.id)
                 .eq('estado', 'pendiente');
-            this.solicitudesEnviadas = data || [];
+            this.solicitudesEnviadas = (data || []).map(s => ({
+                ...s,
+                nombre: s.perfiles?.nombre || 'Pescador'
+            }));
         } catch { this.solicitudesEnviadas = []; }
     },
 
@@ -137,34 +140,42 @@ const communityModule = {
     // ── SOLICITUDES DE AMISTAD ────────────────────────────────────────────────
 
     async enviarSolicitud(pescador) {
-        // Verificar que no existe ya
         if (this.amigos.some(a => a.amigo_id === pescador.id)) {
             toast(`${pescador.nombre} ya es tu amigo`, 'info'); return;
         }
         if (this.solicitudesEnviadas.some(s => s.receptor_id === pescador.id)) {
             toast('Ya enviaste una solicitud a esta persona', 'info'); return;
         }
-
         try {
-            const { error } = await db.from('solicitudes_amistad').insert({
+            const { data, error } = await db.from('solicitudes_amistad').insert({
                 emisor_id:   this.currentUser.id,
                 receptor_id: pescador.id,
                 estado:      'pendiente'
-            });
+            }).select().single();
             if (error && error.message.includes('duplicate')) {
                 toast('Ya enviaste una solicitud', 'info'); return;
             }
             if (error) throw error;
-
-            // Agregar a enviadas localmente para actualizar UI
-            this.solicitudesEnviadas.push({ receptor_id: pescador.id, estado: 'pendiente' });
-            // Quitar de cercanos
+            // Guardar con id y nombre para poder cancelar y mostrar en lista
+            this.solicitudesEnviadas.push({ id: data.id, receptor_id: pescador.id, estado: 'pendiente', _nombre: pescador.nombre });
             this.cercanos = this.cercanos.filter(p => p.id !== pescador.id);
             this.renderCercanos();
-            toast(`✅ Solicitud enviada a ${pescador.nombre}`, 'success');
+            this.renderAmigos(); // mostrar en lista de amigos como pendiente
+            toast(`✅ Solicitud enviada a ${pescador.nombre} — esperando respuesta`, 'success');
         } catch (err) {
             toast('Error al enviar solicitud: ' + err.message, 'error');
         }
+    },
+
+    async cancelarSolicitud(sol) {
+        if (!await confirmar(`¿Cancelar solicitud enviada a ${sol._nombre || 'este pescador'}?`)) return;
+        try {
+            await db.from('solicitudes_amistad').delete().eq('id', sol.id);
+            this.solicitudesEnviadas = this.solicitudesEnviadas.filter(s => s.id !== sol.id);
+            await this.cargarCercanos();
+            this.render();
+            toast('Solicitud cancelada', 'info');
+        } catch(err) { toast('Error: ' + err.message, 'error'); }
     },
 
     // Escucha en tiempo real solicitudes que ME llegan
@@ -235,8 +246,11 @@ const communityModule = {
         item.querySelector('.btn-rechazar').onclick = () => this.responderSolicitud(solicitudId, emisorId, nombre, 'rechazada', item);
 
         lista.prepend(item);
+        // Ocultar el empty state
+        const emptyEl = document.getElementById('notif-empty');
+        if (emptyEl) emptyEl.style.display = 'none';
 
-        // Mostrar el modal automáticamente
+        // Mostrar el modal automáticamente solo si está cerrado
         document.getElementById('notification-modal')?.classList.remove('hidden');
     },
 
@@ -263,18 +277,30 @@ const communityModule = {
             // Remover el item del modal
             itemEl?.remove();
             this.actualizarBadgeNotificaciones(-1);
+            // Mostrar empty si no quedan notificaciones
+            const lista = document.getElementById('notif-list');
+            const hayItems = lista && lista.querySelectorAll('[id^="solicitud-"]').length > 0;
+            const emptyEl = document.getElementById('notif-empty');
+            if (emptyEl) emptyEl.style.display = hayItems ? 'none' : 'block';
         } catch (err) {
             toast('Error: ' + err.message, 'error');
         }
+    },
+
+    setBadgeNotificaciones(n) {
+        const badge = document.getElementById('notif-badge');
+        if (!badge) return;
+        const num = Math.max(0, n);
+        badge.textContent = num;
+        if (num === 0) { badge.classList.add('hidden'); badge.classList.remove('flex'); }
+        else { badge.classList.remove('hidden'); badge.classList.add('flex'); }
     },
 
     actualizarBadgeNotificaciones(delta) {
         const badge = document.getElementById('notif-badge');
         if (!badge) return;
         const actual = parseInt(badge.textContent) || 0;
-        const nuevo = Math.max(0, actual + delta);
-        badge.textContent = nuevo;
-        badge.classList.toggle('hidden', nuevo === 0);
+        this.setBadgeNotificaciones(actual + delta);
     },
 
     // Cargar solicitudes pendientes al abrir notificaciones
@@ -297,12 +323,59 @@ const communityModule = {
             });
 
             // Actualizar badge
-            const badge = document.getElementById('notif-badge');
-            if (badge) {
-                badge.textContent = data.length;
-                badge.classList.toggle('hidden', data.length === 0);
-            }
+            this.setBadgeNotificaciones(data.length);
         } catch {}
+    },
+
+    // ── SOLICITUDES ENVIADAS EN LISTA AMIGOS ─────────────────────────────────
+
+    renderSolicitudesEnviadas() {
+        const wrap = document.getElementById('solicitudes-enviadas-wrap');
+        const cont = document.getElementById('solicitudes-enviadas-list');
+        if (!wrap || !cont) return;
+
+        if (!this.solicitudesEnviadas || this.solicitudesEnviadas.length === 0) {
+            wrap.classList.add('hidden');
+            return;
+        }
+
+        wrap.classList.remove('hidden');
+        cont.innerHTML = '';
+
+        this.solicitudesEnviadas.forEach(sol => {
+            const nombre = sol.nombre || sol.receptor_nombre || 'Pescador';
+            const item = document.createElement('div');
+            item.className = 'flex items-center p-3 bg-yellow-50 rounded-lg border border-yellow-100 gap-3';
+            item.innerHTML = `
+                <div class="w-10 h-10 ${this.colorPara(nombre)} rounded-full flex items-center justify-center flex-shrink-0 font-bold text-sm opacity-70">
+                    ${nombre.charAt(0).toUpperCase()}
+                </div>
+                <div class="flex-1 min-w-0">
+                    <p class="font-medium text-sm">${nombre}</p>
+                    <p class="text-xs text-yellow-600 flex items-center gap-1">
+                        <i class="fa fa-clock-o"></i> Solicitud pendiente
+                    </p>
+                </div>
+                <button class="text-xs text-gray-400 hover:text-red-500 btn-cancelar-sol px-2 py-1 rounded" title="Cancelar solicitud">
+                    <i class="fa fa-times"></i>
+                </button>`;
+            item.querySelector('.btn-cancelar-sol').onclick = () => this.cancelarSolicitud(sol);
+            cont.appendChild(item);
+        });
+    },
+
+    async cancelarSolicitud(sol) {
+        if (!await confirmar('¿Cancelar la solicitud de amistad?')) return;
+        try {
+            await db.from('solicitudes_amistad')
+                .delete()
+                .eq('emisor_id', this.currentUser.id)
+                .eq('receptor_id', sol.receptor_id);
+            this.solicitudesEnviadas = this.solicitudesEnviadas.filter(s => s.receptor_id !== sol.receptor_id);
+            await this.cargarCercanos();
+            this.render();
+            toast('Solicitud cancelada', 'info');
+        } catch (err) { toast('Error: ' + err.message, 'error'); }
     },
 
     // ── AMIGOS ────────────────────────────────────────────────────────────────
@@ -614,7 +687,30 @@ const communityModule = {
     renderAmigos() {
         const cont=document.getElementById('friend-list'); if(!cont)return;
         cont.innerHTML='';
-        if(this.amigos.length===0){
+
+        // Mostrar solicitudes enviadas pendientes en la lista de amigos
+        if(this.solicitudesEnviadas.length > 0) {
+            this.solicitudesEnviadas.forEach(sol => {
+                const nombre = sol._nombre || 'Pescador';
+                const item = document.createElement('div');
+                item.className = 'flex items-center p-3 bg-yellow-50 rounded-lg gap-3 border border-yellow-100';
+                item.innerHTML = `
+                    <div class="w-10 h-10 ${this.colorPara(nombre)} rounded-full flex items-center justify-center flex-shrink-0 font-bold text-sm opacity-60">
+                        ${nombre.charAt(0).toUpperCase()}
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="font-medium text-gray-600">${nombre}</p>
+                        <p class="text-xs text-yellow-600 flex items-center gap-1"><i class="fa fa-clock-o"></i> Solicitud pendiente</p>
+                    </div>
+                    <button class="text-xs text-gray-400 hover:text-red-400 btn-cancelar-sol p-2" title="Cancelar solicitud">
+                        <i class="fa fa-times"></i>
+                    </button>`;
+                item.querySelector('.btn-cancelar-sol').onclick = () => this.cancelarSolicitud(sol);
+                cont.appendChild(item);
+            });
+        }
+
+        if(this.amigos.length===0 && this.solicitudesEnviadas.length===0){
             cont.innerHTML=`<div class="text-center py-6 text-gray-400"><i class="fa fa-users text-3xl mb-2 block"></i><p class="text-sm">Sin amigos aún</p><p class="text-xs mt-1">Añade pescadores desde la lista de cercanos</p></div>`;
             return;
         }

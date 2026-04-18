@@ -406,7 +406,7 @@
                 <div class="flex items-center space-x-4">
                     <button id="notification-btn" class="relative p-2 text-gray-600 hover:text-primary">
                         <i class="fa fa-bell-o text-xl"></i>
-                        <span id="notif-badge" class="absolute top-1 right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">3</span>
+                        <span id="notif-badge" class="absolute top-1 right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 items-center justify-center hidden">0</span>
                     </button>
          <button id="settings-btn" onclick="document.querySelector('.nav-item[data-page=\'profile-page\']').click()" class="p-2 text-gray-600 hover:text-primary transition-colors">
     <i class="fa fa-cog text-xl"></i>
@@ -1215,36 +1215,10 @@
                         <i class="fa fa-times text-xl"></i>
                     </button>
                 </div>
-                <div class="p-4 space-y-4">
-                    <div class="flex items-start p-3 bg-blue-50 rounded-lg">
-                        <div class="bg-blue-100 p-2 rounded-full mr-3 mt-1">
-                            <i class="fa fa-bell text-primary"></i>
-                        </div>
-                        <div class="flex-1">
-                            <p class="font-medium">Alerta de Clima</p>
-                            <p class="text-sm text-gray-600 mb-1">Vientos fuertes mañana, no se recomienda salir a pescar.</p>
-                            <p class="text-xs text-gray-500">Hace 10 min</p>
-                        </div>
-                    </div>
-                    <div class="flex items-start p-3 bg-green-50 rounded-lg">
-                        <div class="bg-green-100 p-2 rounded-full mr-3 mt-1">
-                            <i class="fa fa-users text-secondary"></i>
-                        </div>
-                        <div class="flex-1">
-                            <p class="font-medium">Invitación a Actividad</p>
-                            <p class="text-sm text-gray-600 mb-1">Te han invitado a "Pesca de Fin de Semana".</p>
-                            <p class="text-xs text-gray-500">Hace 2 horas</p>
-                        </div>
-                    </div>
-                    <div class="flex items-start p-3 bg-gray-50 rounded-lg">
-                        <div class="bg-gray-100 p-2 rounded-full mr-3 mt-1">
-                            <i class="fa fa-info-circle text-gray-600"></i>
-                        </div>
-                        <div class="flex-1">
-                            <p class="font-medium">Notificación del Sistema</p>
-                            <p class="text-sm text-gray-600 mb-1">¡Bienvenido a PzKayak Connect!</p>
-                            <p class="text-xs text-gray-500">Ayer</p>
-                        </div>
+                <div id="notif-list" class="p-4 space-y-3">
+                    <div id="notif-empty" class="text-center py-8 text-gray-400">
+                        <i class="fa fa-bell-o text-3xl mb-2 block"></i>
+                        <p class="text-sm">No tienes notificaciones</p>
                     </div>
                 </div>
             </div>
