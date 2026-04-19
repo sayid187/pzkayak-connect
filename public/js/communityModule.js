@@ -90,13 +90,28 @@ const communityModule = {
 
     async cargarSolicitudesEnviadas() {
         try {
-            const { data } = await db.from('solicitudes_amistad')
-                .select('id, receptor_id, estado, perfiles!solicitudes_amistad_receptor_id_fkey(nombre)')
+            // Paso 1: traer solicitudes enviadas pendientes
+            const { data: sols } = await db.from('solicitudes_amistad')
+                .select('id, receptor_id, estado')
                 .eq('emisor_id', this.currentUser.id)
                 .eq('estado', 'pendiente');
-            this.solicitudesEnviadas = (data || []).map(s => ({
-                ...s,
-                nombre: s.perfiles?.nombre || 'Pescador'
+
+            if (!sols || sols.length === 0) { this.solicitudesEnviadas = []; return; }
+
+            // Paso 2: traer nombres de los receptores
+            const receptorIds = sols.map(s => s.receptor_id);
+            const { data: perfs } = await db.from('perfiles')
+                .select('id, nombre')
+                .in('id', receptorIds);
+
+            const perfilMap = {};
+            (perfs || []).forEach(p => { perfilMap[p.id] = p.nombre; });
+
+            this.solicitudesEnviadas = sols.map(s => ({
+                id: s.id,
+                receptor_id: s.receptor_id,
+                estado: s.estado,
+                nombre: perfilMap[s.receptor_id] || 'Pescador'
             }));
         } catch { this.solicitudesEnviadas = []; }
     },
@@ -144,31 +159,36 @@ const communityModule = {
             toast(`${pescador.nombre} ya es tu amigo`, 'info'); return;
         }
         if (this.solicitudesEnviadas.some(s => s.receptor_id === pescador.id)) {
-            toast('Ya enviaste una solicitud a esta persona', 'info'); return;
+            toast('Ya enviaste una solicitud', 'info'); return;
         }
         try {
             const { data, error } = await db.from('solicitudes_amistad').insert({
                 emisor_id:   this.currentUser.id,
                 receptor_id: pescador.id,
                 estado:      'pendiente'
-            }).select().single();
-            if (error && error.message.includes('duplicate')) {
-                toast('Ya enviaste una solicitud', 'info'); return;
-            }
+            }).select('id, receptor_id, estado').single();
+
+            if (error?.message?.includes('duplicate')) { toast('Ya enviaste una solicitud', 'info'); return; }
             if (error) throw error;
-            // Guardar con id y nombre para poder cancelar y mostrar en lista
-            this.solicitudesEnviadas.push({ id: data.id, receptor_id: pescador.id, estado: 'pendiente', _nombre: pescador.nombre });
+
+            // Agregar localmente con nombre correcto
+            this.solicitudesEnviadas.push({
+                id: data.id,
+                receptor_id: pescador.id,
+                estado: 'pendiente',
+                nombre: pescador.nombre
+            });
             this.cercanos = this.cercanos.filter(p => p.id !== pescador.id);
             this.renderCercanos();
-            this.renderAmigos(); // mostrar en lista de amigos como pendiente
-            toast(`✅ Solicitud enviada a ${pescador.nombre} — esperando respuesta`, 'success');
+            this.renderAmigos();
+            toast(`✅ Solicitud enviada a ${pescador.nombre}`, 'success');
         } catch (err) {
-            toast('Error al enviar solicitud: ' + err.message, 'error');
+            toast('Error: ' + err.message, 'error');
         }
     },
 
     async cancelarSolicitud(sol) {
-        if (!await confirmar(`¿Cancelar solicitud enviada a ${sol._nombre || 'este pescador'}?`)) return;
+        if (!await confirmar(`¿Cancelar solicitud enviada a ${sol.nombre || 'este pescador'}?`)) return;
         try {
             await db.from('solicitudes_amistad').delete().eq('id', sol.id);
             this.solicitudesEnviadas = this.solicitudesEnviadas.filter(s => s.id !== sol.id);
@@ -181,19 +201,23 @@ const communityModule = {
     // Escucha en tiempo real solicitudes que ME llegan
     suscribirSolicitudes() {
         if (!this.currentUser) return;
-        this.solicitudSub = db.channel(`solicitudes-${this.currentUser.id}`)
+        const uid = this.currentUser.id;
+
+        this.solicitudSub = db.channel(`solicitudes-${uid}`)
+            // Solicitudes que ME llegan (soy receptor)
             .on('postgres_changes', {
-                event: '*',
-                schema: 'public',
-                table: 'solicitudes_amistad',
-                filter: `receptor_id=eq.${this.currentUser.id}`
+                event: 'INSERT', schema: 'public', table: 'solicitudes_amistad',
+                filter: `receptor_id=eq.${uid}`
             }, payload => {
-                if (payload.eventType === 'INSERT' && payload.new.estado === 'pendiente') {
-                    this.onNuevaSolicitud(payload.new);
-                }
-                if (payload.eventType === 'UPDATE' && payload.new.estado === 'aceptada') {
-                    this.onSolicitudAceptada(payload.new);
-                }
+                if (payload.new.estado === 'pendiente') this.onNuevaSolicitud(payload.new);
+            })
+            // Solicitud que yo envié fue aceptada o rechazada (soy emisor)
+            .on('postgres_changes', {
+                event: 'UPDATE', schema: 'public', table: 'solicitudes_amistad',
+                filter: `emisor_id=eq.${uid}`
+            }, payload => {
+                if (payload.new.estado === 'aceptada') this.onMiSolicitudAceptada(payload.new);
+                if (payload.new.estado === 'rechazada') this.onMiSolicitudRechazada(payload.new);
             })
             .subscribe();
     },
@@ -208,12 +232,21 @@ const communityModule = {
         } catch {}
     },
 
-    onSolicitudAceptada(solicitud) {
-        // Mi solicitud fue aceptada — recargar amigos
-        this.cargarAmigos().then(() => {
-            this.cargarCercanos().then(() => this.render());
-        });
+    async onMiSolicitudAceptada(solicitud) {
+        // Mi solicitud fue aceptada — quitar de enviadas y recargar amigos
+        this.solicitudesEnviadas = this.solicitudesEnviadas.filter(s => s.id !== solicitud.id);
+        await this.cargarAmigos();
+        await this.cargarCercanos();
+        this.render();
         toast('🎣 ¡Tu solicitud fue aceptada! Ya pueden chatear', 'success');
+    },
+
+    onMiSolicitudRechazada(solicitud) {
+        // Mi solicitud fue rechazada — quitar de enviadas y devolver a cercanos
+        const sol = this.solicitudesEnviadas.find(s => s.id === solicitud.id);
+        this.solicitudesEnviadas = this.solicitudesEnviadas.filter(s => s.id !== solicitud.id);
+        this.cargarCercanos().then(() => this.render());
+        if (sol) toast(`${sol.nombre} no aceptó tu solicitud`, 'info');
     },
 
     mostrarNotificacionSolicitud(solicitudId, emisorId, nombre) {
@@ -327,56 +360,7 @@ const communityModule = {
         } catch {}
     },
 
-    // ── SOLICITUDES ENVIADAS EN LISTA AMIGOS ─────────────────────────────────
 
-    renderSolicitudesEnviadas() {
-        const wrap = document.getElementById('solicitudes-enviadas-wrap');
-        const cont = document.getElementById('solicitudes-enviadas-list');
-        if (!wrap || !cont) return;
-
-        if (!this.solicitudesEnviadas || this.solicitudesEnviadas.length === 0) {
-            wrap.classList.add('hidden');
-            return;
-        }
-
-        wrap.classList.remove('hidden');
-        cont.innerHTML = '';
-
-        this.solicitudesEnviadas.forEach(sol => {
-            const nombre = sol.nombre || sol.receptor_nombre || 'Pescador';
-            const item = document.createElement('div');
-            item.className = 'flex items-center p-3 bg-yellow-50 rounded-lg border border-yellow-100 gap-3';
-            item.innerHTML = `
-                <div class="w-10 h-10 ${this.colorPara(nombre)} rounded-full flex items-center justify-center flex-shrink-0 font-bold text-sm opacity-70">
-                    ${nombre.charAt(0).toUpperCase()}
-                </div>
-                <div class="flex-1 min-w-0">
-                    <p class="font-medium text-sm">${nombre}</p>
-                    <p class="text-xs text-yellow-600 flex items-center gap-1">
-                        <i class="fa fa-clock-o"></i> Solicitud pendiente
-                    </p>
-                </div>
-                <button class="text-xs text-gray-400 hover:text-red-500 btn-cancelar-sol px-2 py-1 rounded" title="Cancelar solicitud">
-                    <i class="fa fa-times"></i>
-                </button>`;
-            item.querySelector('.btn-cancelar-sol').onclick = () => this.cancelarSolicitud(sol);
-            cont.appendChild(item);
-        });
-    },
-
-    async cancelarSolicitud(sol) {
-        if (!await confirmar('¿Cancelar la solicitud de amistad?')) return;
-        try {
-            await db.from('solicitudes_amistad')
-                .delete()
-                .eq('emisor_id', this.currentUser.id)
-                .eq('receptor_id', sol.receptor_id);
-            this.solicitudesEnviadas = this.solicitudesEnviadas.filter(s => s.receptor_id !== sol.receptor_id);
-            await this.cargarCercanos();
-            this.render();
-            toast('Solicitud cancelada', 'info');
-        } catch (err) { toast('Error: ' + err.message, 'error'); }
-    },
 
     // ── AMIGOS ────────────────────────────────────────────────────────────────
 
@@ -691,7 +675,7 @@ const communityModule = {
         // Mostrar solicitudes enviadas pendientes en la lista de amigos
         if(this.solicitudesEnviadas.length > 0) {
             this.solicitudesEnviadas.forEach(sol => {
-                const nombre = sol._nombre || 'Pescador';
+                const nombre = sol.nombre || 'Pescador';
                 const item = document.createElement('div');
                 item.className = 'flex items-center p-3 bg-yellow-50 rounded-lg gap-3 border border-yellow-100';
                 item.innerHTML = `
