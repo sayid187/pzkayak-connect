@@ -233,7 +233,14 @@ const communityModule = {
     },
 
     async onMiSolicitudAceptada(solicitud) {
-        // Mi solicitud fue aceptada — quitar de enviadas y recargar amigos
+        // Mi solicitud fue aceptada — insertar MI fila en amigos (la del receptor ya fue insertada)
+        const { error } = await db.from('amigos').insert(
+            { user_id: this.currentUser.id, amigo_id: solicitud.receptor_id }
+        );
+        if (error && !error.message.includes('duplicate')) {
+            console.error('Error insertando amigo propio:', error);
+        }
+        // Quitar de enviadas y recargar
         this.solicitudesEnviadas = this.solicitudesEnviadas.filter(s => s.id !== solicitud.id);
         await this.cargarAmigos();
         await this.cargarCercanos();
@@ -294,11 +301,14 @@ const communityModule = {
                 .eq('id', solicitudId);
 
             if (estado === 'aceptada') {
-                // Crear relación bidireccional en tabla amigos
-                await db.from('amigos').insert([
-                    { user_id: this.currentUser.id, amigo_id: emisorId },
-                    { user_id: emisorId, amigo_id: this.currentUser.id },
-                ]);
+                // Solo insertar la fila propia (soy el receptor → agrego al emisor)
+                // El emisor insertará su fila cuando reciba el UPDATE via realtime
+                const { error: amigoError } = await db.from('amigos').insert(
+                    { user_id: this.currentUser.id, amigo_id: emisorId }
+                );
+                if (amigoError && !amigoError.message.includes('duplicate')) {
+                    console.error('Error insertando amigo:', amigoError);
+                }
                 toast(`🎣 ¡Ahora eres amigo de ${nombre}! Ya pueden chatear`, 'success');
                 await this.cargarAmigos();
                 await this.cargarCercanos();
