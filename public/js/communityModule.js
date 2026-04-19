@@ -233,14 +233,16 @@ const communityModule = {
     },
 
     async onMiSolicitudAceptada(solicitud) {
-        // Mi solicitud fue aceptada — insertar MI fila en amigos (la del receptor ya fue insertada)
+        console.log('[PZKAYAK] onMiSolicitudAceptada:', solicitud);
+        // Insertar MI fila en amigos
         const { error } = await db.from('amigos').insert(
             { user_id: this.currentUser.id, amigo_id: solicitud.receptor_id }
         );
         if (error && !error.message.includes('duplicate')) {
-            console.error('Error insertando amigo propio:', error);
+            console.warn('[PZKAYAK] Error insertando mi fila de amigo:', error);
+        } else {
+            console.log('[PZKAYAK] ✅ Mi fila de amigo insertada');
         }
-        // Quitar de enviadas y recargar
         this.solicitudesEnviadas = this.solicitudesEnviadas.filter(s => s.id !== solicitud.id);
         await this.cargarAmigos();
         await this.cargarCercanos();
@@ -295,37 +297,64 @@ const communityModule = {
     },
 
     async responderSolicitud(solicitudId, emisorId, nombre, estado, itemEl) {
+        console.log('[PZKAYAK] responderSolicitud:', { solicitudId, emisorId, nombre, estado });
         try {
-            await db.from('solicitudes_amistad')
+            // PASO 1: Actualizar estado de la solicitud
+            const { error: updError } = await db.from('solicitudes_amistad')
                 .update({ estado, updated_at: new Date().toISOString() })
                 .eq('id', solicitudId);
 
+            if (updError) {
+                console.error('[PZKAYAK] Error actualizando solicitud:', updError);
+                toast('Error al procesar solicitud: ' + updError.message, 'error');
+                return;
+            }
+            console.log('[PZKAYAK] Solicitud actualizada a:', estado);
+
             if (estado === 'aceptada') {
-                // Solo insertar la fila propia (soy el receptor → agrego al emisor)
-                // El emisor insertará su fila cuando reciba el UPDATE via realtime
+                // PASO 2: Insertar mi fila en amigos (soy el receptor)
                 const { error: amigoError } = await db.from('amigos').insert(
                     { user_id: this.currentUser.id, amigo_id: emisorId }
                 );
-                if (amigoError && !amigoError.message.includes('duplicate')) {
-                    console.error('Error insertando amigo:', amigoError);
+                if (amigoError) {
+                    console.error('[PZKAYAK] Error insertando amigo (receptor):', amigoError);
+                    // Si falla por duplicate es ok, continuar
+                    if (!amigoError.message.includes('duplicate')) {
+                        toast('Error al agregar amigo: ' + amigoError.message, 'error');
+                        return;
+                    }
+                } else {
+                    console.log('[PZKAYAK] ✅ Amigo insertado correctamente');
                 }
-                toast(`🎣 ¡Ahora eres amigo de ${nombre}! Ya pueden chatear`, 'success');
+
+                // PASO 3: También insertar la fila del emisor (por si realtime no llega)
+                const { error: amigoError2 } = await db.from('amigos').insert(
+                    { user_id: emisorId, amigo_id: this.currentUser.id }
+                );
+                if (amigoError2 && !amigoError2.message.includes('duplicate')) {
+                    console.warn('[PZKAYAK] Error insertando amigo (emisor):', amigoError2);
+                    // No bloquear — el emisor lo hará via realtime
+                } else {
+                    console.log('[PZKAYAK] ✅ Fila del emisor insertada (o ya existía)');
+                }
+
+                // PASO 4: Recargar y mostrar
                 await this.cargarAmigos();
                 await this.cargarCercanos();
                 this.render();
+                toast(`🎣 ¡Ahora eres amigo de ${nombre}! Ya pueden chatear`, 'success');
             } else {
                 toast(`Solicitud de ${nombre} rechazada`, 'info');
             }
 
-            // Remover el item del modal
             itemEl?.remove();
             this.actualizarBadgeNotificaciones(-1);
-            // Mostrar empty si no quedan notificaciones
             const lista = document.getElementById('notif-list');
             const hayItems = lista && lista.querySelectorAll('[id^="solicitud-"]').length > 0;
             const emptyEl = document.getElementById('notif-empty');
             if (emptyEl) emptyEl.style.display = hayItems ? 'none' : 'block';
         } catch (err) {
+            console.error('[PZKAYAK] Error en responderSolicitud:', err);
             toast('Error: ' + err.message, 'error');
         }
     },
