@@ -71,19 +71,28 @@ const communityModule = {
 
     async cargarAmigos() {
         try {
-            const { data, error } = await db.from('amigos')
-                .select('id, amigo_id, perfiles!amigos_amigo_id_fkey(id, nombre, lat, lng, ultima_vez_online)')
+            const { data: rows, error } = await db.from('amigos')
+                .select('id, amigo_id')
                 .eq('user_id', this.currentUser.id);
             if (error) throw error;
-            this.amigos = (data || []).map(row => {
-                const p = row.perfiles || {};
-                return {
-                    id: row.id, amigo_id: row.amigo_id,
+            if (!rows || rows.length === 0) { this.amigos = []; return; }
+
+            const amigoIds = rows.map(r => r.amigo_id).filter(Boolean);
+            if (amigoIds.length === 0) { this.amigos = []; return; }
+            const { data: perfs } = await db.from('perfiles')
+                .select('id, nombre, lat, lng, ultima_vez_online')
+                .in('id', amigoIds);
+
+            const pm = {};
+            (perfs || []).forEach(p => { pm[p.id] = p; });
+
+            this.amigos = rows.map(row => {
+                const p = pm[row.amigo_id] || {};
+                return { id: row.id, amigo_id: row.amigo_id,
                     nombre: p.nombre || 'Pescador',
                     lat: p.lat || null, lng: p.lng || null,
                     online: this.estaOnline(p.ultima_vez_online),
-                    distancia: this.calcularDistancia(p.lat, p.lng)
-                };
+                    distancia: this.calcularDistancia(p.lat, p.lng) };
             });
         } catch { this.amigos = []; }
     },
@@ -100,6 +109,7 @@ const communityModule = {
 
             // Paso 2: traer nombres de los receptores
             const receptorIds = sols.map(s => s.receptor_id);
+            if (receptorIds.length === 0) { this.solicitudesEnviadas = []; return; }
             const { data: perfs } = await db.from('perfiles')
                 .select('id, nombre')
                 .in('id', receptorIds);
@@ -122,9 +132,11 @@ const communityModule = {
             const idsEnviadas = this.solicitudesEnviadas.map(s => s.receptor_id);
             const idsExcluir = [...new Set([...idsAmigos, ...idsEnviadas, this.currentUser.id])];
 
+            // Si no hay IDs que excluir, usar solo el propio
+            const excList = idsExcluir.length > 0 ? idsExcluir : [this.currentUser.id];
             const { data, error } = await db.from('perfiles')
                 .select('id, nombre, lat, lng, tipo_pesca, nivel, ultima_vez_online, compartir_ubicacion')
-                .not('id', 'in', `(${idsExcluir.join(',')})`)
+                .not('id', 'in', `(${excList.join(',')})`)
                 .eq('compartir_ubicacion', true)
                 .not('lat', 'is', null)
                 .limit(20);
@@ -139,15 +151,40 @@ const communityModule = {
 
     async cargarActividades() {
         try {
-            const { data, error } = await db.from('actividades')
-                .select('*, actividad_participantes(user_id), perfiles!actividades_creador_id_fkey(nombre)')
+            const { data: acts, error } = await db.from('actividades')
+                .select('id, titulo, lugar, fecha, hora, max_participantes, descripcion, creador_id')
                 .order('fecha', { ascending: true });
             if (error) throw error;
-            this.actividades = (data||[]).map(a => ({
-                id:a.id, titulo:a.titulo, lugar:a.lugar, fecha:a.fecha, hora:a.hora||'08:00',
-                maxParticipantes:a.max_participantes||10,
-                participantes:(a.actividad_participantes||[]).map(p=>p.user_id),
-                creador:a.perfiles?.nombre||'Organizador', descripcion:a.descripcion||''
+            if (!acts || acts.length === 0) { this.actividades = []; return; }
+
+            // Participantes
+            const actIds = acts.map(a => a.id).filter(Boolean);
+            const partsData = actIds.length > 0
+                ? (await db.from('actividad_participantes').select('actividad_id, user_id').in('actividad_id', actIds)).data
+                : [];
+
+            // Nombres de creadores
+            const creadorIds = [...new Set(acts.map(a => a.creador_id).filter(Boolean))];
+            const creaPerfs = creadorIds.length > 0
+                ? (await db.from('perfiles').select('id, nombre').in('id', creadorIds)).data
+                : [];
+            const cpm = {};
+            (creaPerfs || []).forEach(p => { cpm[p.id] = p.nombre; });
+
+            // Agrupar participantes por actividad
+            const partMap = {};
+            (partsData || []).forEach(p => {
+                if (!partMap[p.actividad_id]) partMap[p.actividad_id] = [];
+                partMap[p.actividad_id].push(p.user_id);
+            });
+
+            this.actividades = acts.map(a => ({
+                id: a.id, titulo: a.titulo, lugar: a.lugar,
+                fecha: a.fecha, hora: a.hora || '08:00',
+                maxParticipantes: a.max_participantes || 10,
+                participantes: partMap[a.id] || [],
+                creador: cpm[a.creador_id] || 'Organizador',
+                descripcion: a.descripcion || ''
             }));
         } catch { this.actividades = []; }
     },
@@ -233,16 +270,14 @@ const communityModule = {
     },
 
     async onMiSolicitudAceptada(solicitud) {
-        console.log('[PZKAYAK] onMiSolicitudAceptada:', solicitud);
-        // Insertar MI fila en amigos
+        // Mi solicitud fue aceptada — insertar MI fila en amigos (la del receptor ya fue insertada)
         const { error } = await db.from('amigos').insert(
             { user_id: this.currentUser.id, amigo_id: solicitud.receptor_id }
         );
         if (error && !error.message.includes('duplicate')) {
-            console.warn('[PZKAYAK] Error insertando mi fila de amigo:', error);
-        } else {
-            console.log('[PZKAYAK] ✅ Mi fila de amigo insertada');
+            console.error('Error insertando amigo propio:', error);
         }
+        // Quitar de enviadas y recargar
         this.solicitudesEnviadas = this.solicitudesEnviadas.filter(s => s.id !== solicitud.id);
         await this.cargarAmigos();
         await this.cargarCercanos();
@@ -297,64 +332,37 @@ const communityModule = {
     },
 
     async responderSolicitud(solicitudId, emisorId, nombre, estado, itemEl) {
-        console.log('[PZKAYAK] responderSolicitud:', { solicitudId, emisorId, nombre, estado });
         try {
-            // PASO 1: Actualizar estado de la solicitud
-            const { error: updError } = await db.from('solicitudes_amistad')
-                .update({ estado, updated_at: new Date().toISOString() })
+            await db.from('solicitudes_amistad')
+                .update({ estado })
                 .eq('id', solicitudId);
 
-            if (updError) {
-                console.error('[PZKAYAK] Error actualizando solicitud:', updError);
-                toast('Error al procesar solicitud: ' + updError.message, 'error');
-                return;
-            }
-            console.log('[PZKAYAK] Solicitud actualizada a:', estado);
-
             if (estado === 'aceptada') {
-                // PASO 2: Insertar mi fila en amigos (soy el receptor)
+                // Solo insertar la fila propia (soy el receptor → agrego al emisor)
+                // El emisor insertará su fila cuando reciba el UPDATE via realtime
                 const { error: amigoError } = await db.from('amigos').insert(
                     { user_id: this.currentUser.id, amigo_id: emisorId }
                 );
-                if (amigoError) {
-                    console.error('[PZKAYAK] Error insertando amigo (receptor):', amigoError);
-                    // Si falla por duplicate es ok, continuar
-                    if (!amigoError.message.includes('duplicate')) {
-                        toast('Error al agregar amigo: ' + amigoError.message, 'error');
-                        return;
-                    }
-                } else {
-                    console.log('[PZKAYAK] ✅ Amigo insertado correctamente');
+                if (amigoError && !amigoError.message.includes('duplicate')) {
+                    console.error('Error insertando amigo:', amigoError);
                 }
-
-                // PASO 3: También insertar la fila del emisor (por si realtime no llega)
-                const { error: amigoError2 } = await db.from('amigos').insert(
-                    { user_id: emisorId, amigo_id: this.currentUser.id }
-                );
-                if (amigoError2 && !amigoError2.message.includes('duplicate')) {
-                    console.warn('[PZKAYAK] Error insertando amigo (emisor):', amigoError2);
-                    // No bloquear — el emisor lo hará via realtime
-                } else {
-                    console.log('[PZKAYAK] ✅ Fila del emisor insertada (o ya existía)');
-                }
-
-                // PASO 4: Recargar y mostrar
+                toast(`🎣 ¡Ahora eres amigo de ${nombre}! Ya pueden chatear`, 'success');
                 await this.cargarAmigos();
                 await this.cargarCercanos();
                 this.render();
-                toast(`🎣 ¡Ahora eres amigo de ${nombre}! Ya pueden chatear`, 'success');
             } else {
                 toast(`Solicitud de ${nombre} rechazada`, 'info');
             }
 
+            // Remover el item del modal
             itemEl?.remove();
             this.actualizarBadgeNotificaciones(-1);
+            // Mostrar empty si no quedan notificaciones
             const lista = document.getElementById('notif-list');
             const hayItems = lista && lista.querySelectorAll('[id^="solicitud-"]').length > 0;
             const emptyEl = document.getElementById('notif-empty');
             if (emptyEl) emptyEl.style.display = hayItems ? 'none' : 'block';
         } catch (err) {
-            console.error('[PZKAYAK] Error en responderSolicitud:', err);
             toast('Error: ' + err.message, 'error');
         }
     },
@@ -378,24 +386,29 @@ const communityModule = {
     // Cargar solicitudes pendientes al abrir notificaciones
     async cargarSolicitudesPendientes() {
         try {
-            const { data } = await db.from('solicitudes_amistad')
-                .select('id, emisor_id, perfiles!solicitudes_amistad_emisor_id_fkey(nombre)')
+            const { data: sols } = await db.from('solicitudes_amistad')
+                .select('id, emisor_id')
                 .eq('receptor_id', this.currentUser.id)
                 .eq('estado', 'pendiente');
 
             const lista = document.getElementById('notif-list');
-            if (!lista || !data?.length) return;
+            if (!lista || !sols?.length) return;
 
-            // Remover solicitudes anteriores
+            // Nombres de emisores
+            const emisorIds = sols.map(s => s.emisor_id);
+            const { data: emisorPerfs } = await db.from('perfiles')
+                .select('id, nombre').in('id', emisorIds);
+            const epm = {};
+            (emisorPerfs || []).forEach(p => { epm[p.id] = p.nombre; });
+
+            // Remover solicitudes anteriores del modal
             lista.querySelectorAll('[id^="solicitud-"]').forEach(el => el.remove());
 
-            data.forEach(s => {
-                const nombre = s.perfiles?.nombre || 'Pescador';
-                this.mostrarNotificacionSolicitud(s.id, s.emisor_id, nombre);
+            sols.forEach(s => {
+                this.mostrarNotificacionSolicitud(s.id, s.emisor_id, epm[s.emisor_id] || 'Pescador');
             });
 
-            // Actualizar badge
-            this.setBadgeNotificaciones(data.length);
+            this.setBadgeNotificaciones(sols.length);
         } catch {}
     },
 
