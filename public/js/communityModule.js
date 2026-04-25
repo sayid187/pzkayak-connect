@@ -53,7 +53,7 @@ const communityModule = {
     // ── CARGA DATOS ───────────────────────────────────────────────────────────
 
     async cargarTodo() {
-        await Promise.all([
+        await Promise.allSettled([
             this.cargarPerfil(),
             this.cargarAmigos(),
             this.cargarActividades(),
@@ -199,10 +199,12 @@ const communityModule = {
             toast('Ya enviaste una solicitud', 'info'); return;
         }
         try {
+            const nombreEmisor = this.perfil?.nombre || this.currentUser.email?.split('@')[0] || 'Pescador';
             const { data, error } = await db.from('solicitudes_amistad').insert({
-                emisor_id:   this.currentUser.id,
-                receptor_id: pescador.id,
-                estado:      'pendiente'
+                emisor_id:     this.currentUser.id,
+                receptor_id:   pescador.id,
+                nombre_emisor: nombreEmisor,
+                estado:        'pendiente'
             }).select('id, receptor_id, estado').single();
 
             if (error?.message?.includes('duplicate')) { toast('Ya enviaste una solicitud', 'info'); return; }
